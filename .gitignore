@@ -29,6 +29,7 @@ pnpm-debug.log*
 # Runtime data
 logs/
 *.log
+langGraph_agent/smart_data_analysis_assistant/audit_logs/
 pgdata/
 demo_upload_files/
 langGraph_agent/smart_data_analysis_assistant/import_jobs/

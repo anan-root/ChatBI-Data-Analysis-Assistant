@@ -1,11 +1,10 @@
 {
   "scripts": {
-    "dev": "vite"
+    "dev": "vite",
+    "build": "vite build"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "echarts": "latest",
-    "echarts-for-react": "latest",
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",

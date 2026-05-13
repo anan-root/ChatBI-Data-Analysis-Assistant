@@ -9,20 +9,36 @@ pip install dotenv
 
 import sys
 import os
+from time import perf_counter
 # 添加当前项目路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from langchain_community.utilities import SQLDatabase
 from mcp.server import FastMCP
 from dotenv import load_dotenv
 import os
+import psycopg2
+from core.security import (
+    DEFAULT_SQL_MAX_ROWS,
+    DEFAULT_SQL_TIMEOUT_MS,
+    build_statement_timeout_sql,
+    enforce_select_limit,
+    get_int_env,
+    validate_readonly_sql,
+)
+from core.audit import audit_sql_decision
 
 load_dotenv()
 QWEN_API_KEY = os.getenv("QWEN_API_KEY")
 db_host = os.getenv("db_host", "127.0.0.1")
 db_port = os.getenv("db_port", 5432)
 user = os.getenv("user", "postgres")
-password = os.getenv("password", "123456")
+password = os.getenv("password")
 dbname = os.getenv("dbname", "sales_chat")
+if not password:
+    raise RuntimeError("数据库密码未配置，请在 .env 中设置 password，禁止使用默认弱密码。")
+SQL_MAX_ROWS = get_int_env("CHATBI_SQL_MAX_ROWS", DEFAULT_SQL_MAX_ROWS, minimum=1, maximum=10000)
+SQL_TIMEOUT_MS = get_int_env("CHATBI_SQL_TIMEOUT_MS", DEFAULT_SQL_TIMEOUT_MS, minimum=100, maximum=60000)
 
 
 # %%
@@ -32,6 +48,16 @@ mcp = FastMCP(
 db = SQLDatabase.from_uri(
     f"postgresql://{user}:{password}@{db_host}:{db_port}/{dbname}"
 )
+
+
+def get_connection():
+    return psycopg2.connect(
+        host=db_host,
+        port=db_port,
+        user=user,
+        password=password,
+        dbname=dbname,
+    )
 
 # %%
 def get_table_comments(db):
@@ -114,15 +140,65 @@ async def list_tables_tool() -> str:
 @mcp.tool()
 def db_sql_tool(query: str) -> str:
     """
-    执行SQL查询并返回结果。如果查询不正确，将返回错误信息;如果返回错误，请重写查询语句，检查后重试。
-    :param query: 非空的要执行的SQL查询语句
+    执行只读 SQL 查询并返回结果。只允许 SELECT / WITH / EXPLAIN，禁止 DML/DDL 和多语句。
+    :param query: 非空的只读 SQL 查询语句
     :return:str: 查询结果或错误信息
     """
-    # 利用的是关系型数据库查询SQL的内置方法
-    result = db.run_no_throw(query)  # 执行查询（不抛出异常）
-    if not result:
-        return "错误: 查询失败。请修改查询语句后重试。"
-    return result
+    safety = validate_readonly_sql(query)
+    if not safety.allowed:
+        audit_sql_decision(
+            source="statistic_db_mcp.db_sql_tool",
+            allowed=False,
+            query=query,
+            reason=safety.reason,
+            row_limit=SQL_MAX_ROWS,
+        )
+        return f"错误: SQL 安全检查未通过。{safety.reason}"
+    safe_query = enforce_select_limit(safety.query, SQL_MAX_ROWS)
+    started_at = perf_counter()
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(build_statement_timeout_sql(SQL_TIMEOUT_MS))
+                cursor.execute(safe_query)
+                if cursor.description is None:
+                    audit_sql_decision(
+                        source="statistic_db_mcp.db_sql_tool",
+                        allowed=False,
+                        query=safe_query,
+                        reason="查询没有返回结果",
+                        row_limit=SQL_MAX_ROWS,
+                        elapsed_ms=(perf_counter() - started_at) * 1000,
+                    )
+                    return "错误: 查询没有返回结果。"
+                columns = [desc[0] for desc in cursor.description]
+                rows = cursor.fetchmany(SQL_MAX_ROWS + 1)
+                truncated = len(rows) > SQL_MAX_ROWS
+                rows = rows[:SQL_MAX_ROWS]
+    except Exception as exc:
+        audit_sql_decision(
+            source="statistic_db_mcp.db_sql_tool",
+            allowed=False,
+            query=safe_query,
+            reason=f"查询失败: {exc}",
+            row_limit=SQL_MAX_ROWS,
+            elapsed_ms=(perf_counter() - started_at) * 1000,
+        )
+        return f"错误: 查询失败。请修改查询语句后重试。原因: {exc}"
+    audit_sql_decision(
+        source="statistic_db_mcp.db_sql_tool",
+        allowed=True,
+        query=safe_query,
+        reason="query executed",
+        row_limit=SQL_MAX_ROWS,
+        elapsed_ms=(perf_counter() - started_at) * 1000,
+        row_count=len(rows),
+    )
+    if not rows:
+        return "[]"
+    result = [dict(zip(columns, row)) for row in rows]
+    suffix = f"\n提示: 结果已按最大返回行数 {SQL_MAX_ROWS} 截断。" if truncated else ""
+    return f"{result}{suffix}"
 
 
 if __name__ == "__main__":

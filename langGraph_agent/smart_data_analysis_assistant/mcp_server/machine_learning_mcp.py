@@ -10,15 +10,18 @@ pip install dotenv
 ...
 """
 import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append("/root/wangshihang/langGraph_agent/smart_data_analysis_assistant")
 sys.path.append("/root/wangshihang/langGraph_agent/smart_data_analysis_assistant/mcp_server")
 from mcp.server import FastMCP
 from dotenv import load_dotenv
-import os
 import json
 from openai import AsyncOpenAI #OPENAI的异步客户端 OPENAI
 from public_function import LLM_replay
 import asyncio
+from core.security import safe_parse_sequence
 #加载.env文件中的环境变量
 load_dotenv()
 # print(os.getenv("DEEPSEEK_API_KEY"))
@@ -220,10 +223,10 @@ async def reviews_stars_correlation_test_tool(ItemName,reviews,stars):
     #先将'["很好吃，会回购","一般般，下次不买了","非常难吃，不会回购"]'从字符串格式转成list格式
     try:
         if type(reviews)==str:
-            reviews = eval(reviews)
+            reviews = safe_parse_sequence(reviews)
         print("reviews_list:",reviews) #转成list
         if type(stars)==str:
-            stars=eval(stars)
+            stars=safe_parse_sequence(stars)
         print("stars_list:",type(stars))
     except Exception as e:
         return f"数据有问题，无法计算相关度,错误原因:{e}"

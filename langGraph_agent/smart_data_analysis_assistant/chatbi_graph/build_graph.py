@@ -21,6 +21,25 @@ from io import BytesIO
 import os
 from dotenv import load_dotenv
 from time import perf_counter
+try:
+    from langchain_core.tools import tool
+except ImportError:
+    tool = None
+
+try:
+    from services.workspace_sql_scope import (
+        build_workspace_sql_policy_text,
+        build_workspace_sql_scope,
+        format_workspace_table_schema,
+        validate_workspace_sql_scope,
+    )
+except ImportError:
+    from .services.workspace_sql_scope import (
+        build_workspace_sql_policy_text,
+        build_workspace_sql_scope,
+        format_workspace_table_schema,
+        validate_workspace_sql_scope,
+    )
 # 加载环境变量
 load_dotenv()
 #加载MCP服务器址的地：121.34.54.32
@@ -89,6 +108,28 @@ def get_message_text(message) -> str:
         return "".join(text_list).strip()
     return str(content).strip()
 
+
+def build_scoped_database_tools(list_tables_tool, db_sql_tool, workspace_context=None):
+    if not workspace_context or tool is None:
+        return list_tables_tool, db_sql_tool, ""
+    scope = build_workspace_sql_scope(workspace_context)
+    policy_text = build_workspace_sql_policy_text(workspace_context)
+
+    @tool("list_tables_tool")
+    def scoped_list_tables_tool() -> str:
+        """返回当前业务空间允许查询的数据表结构和字段画像。"""
+        return format_workspace_table_schema(scope)
+
+    @tool("db_sql_tool")
+    def scoped_db_sql_tool(query: str) -> str:
+        """仅在当前业务空间授权表范围内执行只读 SQL 查询。"""
+        validation = validate_workspace_sql_scope(query, scope)
+        if not validation.allowed:
+            return f"错误: 工作空间 SQL 范围检查未通过。{validation.reason}"
+        return db_sql_tool.invoke({"query": validation.query})
+
+    return scoped_list_tables_tool, scoped_db_sql_tool, policy_text
+
 #业务分流路由条件，
 def should_continue_ywfl(state: BIState) -> Literal[END,"call_python_coder", "call_list_tables"]:
     """条件路由的，动态边"""
@@ -139,7 +180,7 @@ def should_continue(state: BIState) -> Literal[END,"call_select_deep_data_analys
 
 #%%
 @asynccontextmanager  # 作用：用于快速创建异步上下文管理器。它使得异步资源的获取和释放可以像同步代码一样通过 async with 语法优雅地管理。
-async def make_graph():
+async def make_graph(workspace_context=None):
     """定义，并且编译工作流"""
     client = MultiServerMCPClient(mcp_server_config) #接收一个MCP服务器组对象
     log_step("初始化 MCP 客户端")
@@ -200,6 +241,11 @@ async def make_graph():
             return {'messages': [python_coder_result]}
         #执行python程序的工具节点(绘图+编码执行结果)
         python_run_tool_node = ToolNode([run_python_script_tool], name="python_run_tool_node")
+        list_tables_tool, db_sql_tool, workspace_sql_policy = build_scoped_database_tools(
+            list_tables_tool,
+            db_sql_tool,
+            workspace_context,
+        )
         def call_list_tables(state: BIState):
             """获取数据库信息节点"""
             log_step("进入获取数据表结构节点")
@@ -216,6 +262,9 @@ async def make_graph():
         list_tables_tool = ToolNode([list_tables_tool], name="list_tables_tool")
 
         #数据分析和机器学习、绘图的一个runnable编译完了的子图
+        data_analysis_prompt = generate_query_system_prompt
+        if workspace_sql_policy:
+            data_analysis_prompt = f"{generate_query_system_prompt}\n{workspace_sql_policy}"
         data_analysis_agent = create_react_agent(model=llm,
                                                  tools=[db_sql_tool,
                                                         run_python_script_tool,
@@ -223,7 +272,7 @@ async def make_graph():
                                                         translate_to_python_plot_script_tool,
                                                         analysis_product_reviews_tool,
                                                         sales_predict_tool], 
-                                                 prompt=generate_query_system_prompt,name="data_analysis_agent",debug=True)
+                                                 prompt=data_analysis_prompt,name="data_analysis_agent",debug=True)
         workflow = StateGraph(BIState)
         workflow.add_node(call_python_coder)
         workflow.add_node(python_run_tool_node)

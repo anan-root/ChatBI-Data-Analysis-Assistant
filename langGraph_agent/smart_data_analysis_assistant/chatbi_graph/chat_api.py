@@ -5,6 +5,9 @@ import os
 import sys
 import shutil
 import tempfile
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append("/root/wangshihang/langGraph_agent/smart_data_analysis_assistant")
 sys.path.append("/root/wangshihang/langGraph_agent/smart_data_analysis_assistant/chatbi_graph")
 os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
@@ -27,9 +30,12 @@ from collections import defaultdict
 import json
 from fastapi import WebSocket, WebSocketDisconnect, Query
 from async_timeout import timeout  # 确保安装了 async-timeout 库
+from chat_context import UserInput, build_workspace_system_message
 from bi_api import (
     build_anomaly_data,
+    build_audit_log_data,
     build_dashboard_data,
+    build_workspace_chat_context,
     build_import_clean_data,
     build_metric_definitions,
     build_monetization_data,
@@ -42,36 +48,83 @@ from bi_api import (
     commit_import_jobs,
     get_import_job,
     get_import_job_file,
+    init_audit_log_storage,
+    init_metadata_storage,
     list_business_workspaces,
     list_import_jobs,
+    migrate_metadata_storage,
+    migrate_audit_logs_to_postgres,
     process_import_file,
     write_dashboard_csv_file,
     write_metrics_csv_file,
     write_report_markdown_file,
     write_workspace_report_markdown_file,
 )
+from core.security import parse_cors_origins
+from core.audit import audit_admin_token
 
 app = FastAPI()
+allowed_origins = parse_cors_origins(os.getenv("CHATBI_CORS_ORIGINS"))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
 )
-#定义消息体
-class UserInput(BaseModel):
-    user_id: str
-    message: str
-    history: list[dict]
-
-
 class ImportCommitInput(BaseModel):
     table_name: str | None = None
 
 
 class BatchCommitInput(BaseModel):
     job_ids: list[str]
+
+
+class MetadataMigrationInput(BaseModel):
+    limit: int | None = None
+
+
+@app.post("/bi/audit/init")
+async def bi_audit_init(x_chatbi_admin_token: str | None = Header(default=None)):
+    expected_token = audit_admin_token()
+    if expected_token and x_chatbi_admin_token != expected_token:
+        raise HTTPException(status_code=403, detail="审计日志需要管理员令牌。")
+    try:
+        return init_audit_log_storage()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"初始化审计表失败：{exc}") from exc
+
+
+@app.post("/bi/audit/migrate")
+async def bi_audit_migrate(payload: MetadataMigrationInput, x_chatbi_admin_token: str | None = Header(default=None)):
+    expected_token = audit_admin_token()
+    if expected_token and x_chatbi_admin_token != expected_token:
+        raise HTTPException(status_code=403, detail="审计日志需要管理员令牌。")
+    try:
+        return migrate_audit_logs_to_postgres(payload.limit)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"迁移审计日志失败：{exc}") from exc
+
+
+@app.get("/bi/audit")
+async def bi_audit(
+    limit: int = Query(200, ge=1, le=1000),
+    event_type: str | None = None,
+    workspace_id: str | None = None,
+    allowed: bool | None = None,
+    source: str | None = None,
+    x_chatbi_admin_token: str | None = Header(default=None),
+):
+    expected_token = audit_admin_token()
+    if expected_token and x_chatbi_admin_token != expected_token:
+        raise HTTPException(status_code=403, detail="审计日志需要管理员令牌。")
+    return build_audit_log_data(
+        limit=limit,
+        event_type=event_type,
+        workspace_id=workspace_id,
+        allowed=allowed,
+        source=source,
+    )
 
 
 @app.get("/bi/dashboard")
@@ -129,6 +182,22 @@ async def bi_import_clean():
 @app.get("/bi/import-clean/jobs")
 async def bi_import_jobs():
     return list_import_jobs()
+
+
+@app.post("/bi/metadata/init")
+async def bi_metadata_init():
+    try:
+        return init_metadata_storage()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"初始化元数据表失败：{exc}") from exc
+
+
+@app.post("/bi/metadata/migrate")
+async def bi_metadata_migrate(payload: MetadataMigrationInput):
+    try:
+        return migrate_metadata_storage(payload.limit)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"迁移元数据失败：{exc}") from exc
 
 
 @app.post("/bi/import-clean/upload")
@@ -265,15 +334,24 @@ async def chatbi_server(user_input: UserInput):
     print("user_input:",user_input)
     user_id=user_input.user_id
     user_message=user_input.message
-    history=user_input.history
+    history=list(user_input.history or [])
+    workspace_context = None
+    if user_input.workspace_id:
+        try:
+            workspace_context = build_workspace_chat_context(user_input.workspace_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
     history.append({"role": "user", "content": user_message})
     print(f"用户Id:{user_id},本轮输入:{user_message},历史记录:{history}")
+    graph_messages = history
+    if workspace_context:
+        graph_messages = [build_workspace_system_message(workspace_context), *history]
     # thread_config = {"configurable": {"thread_id": user_id}}
 
-    async with make_graph() as graph:
+    async with make_graph(workspace_context=workspace_context) as graph:
         print("创建图成功")
         fallback_result = None
-        async for event in graph.astream({"messages":history},
+        async for event in graph.astream({"messages":graph_messages},
                                          config={"recursion_limit": 8},
                                          stream_mode="values"):  # 保持同一个用户的对话的连续记忆 , config=thread_config
             print("event:",event)

@@ -24,6 +24,8 @@ password = os.getenv("password")
 dbname = os.getenv("dbname")
 db_port=5432
 user =os.getenv("user")
+if not password:
+    raise RuntimeError("数据库密码未配置，请在 .env 中设置 password，禁止使用默认弱密码。")
 # 创建数据库连接
 try:
     db = SQLDatabase.from_uri(

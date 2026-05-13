@@ -20,6 +20,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; }
 button, input { font: inherit; }
+select { font: inherit; }
 
 .app-shell {
   min-height: 100vh;
@@ -342,6 +343,49 @@ h1 {
   cursor: not-allowed;
 }
 
+.chat-context-card {
+  display: grid;
+  gap: 5px;
+  padding: 14px 16px;
+  border: 1px solid rgba(143, 136, 121, .18);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 254, 251, .78), rgba(245, 241, 234, .72));
+  box-shadow: 0 16px 42px rgba(60, 54, 45, .055);
+}
+
+.chat-context-card span {
+  color: #91897c;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.chat-context-card strong {
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 360;
+  letter-spacing: -.03em;
+}
+
+.chat-context-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.chat-context-card button {
+  justify-self: start;
+  margin-top: 4px;
+  border: none;
+  background: transparent;
+  color: #7b7265;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+}
+
 .module-stack {
   min-height: 0;
   overflow-y: auto;
@@ -448,6 +492,38 @@ h1 {
   line-height: 1.5;
 }
 
+.svg-chart-frame {
+  width: 100%;
+  min-height: 220px;
+}
+
+.svg-chart {
+  width: 100%;
+  height: 100%;
+  min-height: 220px;
+  display: block;
+}
+
+.svg-chart line {
+  stroke: rgba(117, 105, 82, 0.22);
+  stroke-width: 1.4;
+}
+
+.svg-chart text {
+  fill: #746b5d;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.empty-chart {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  color: #8f8678;
+  border: 1px dashed rgba(117, 105, 82, 0.18);
+  border-radius: 18px;
+}
+
 .table-card {
   overflow: auto;
 }
@@ -464,6 +540,11 @@ h1 {
 .table-head.three,
 .table-row.three {
   grid-template-columns: 1fr 1.3fr 1fr;
+}
+
+.table-head.audit-row,
+.table-row.audit-row {
+  grid-template-columns: 1.05fr .62fr .95fr .95fr minmax(0, 2.2fr);
 }
 
 .table-row.single {
@@ -499,6 +580,76 @@ h1 {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 12px;
   white-space: normal;
+}
+
+.audit-table .table-row p {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.audit-table .table-row p b {
+  color: #4d4740;
+  font-weight: 500;
+}
+
+.audit-filter-card {
+  display: grid;
+  grid-template-columns: .72fr 1fr 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 254, 251, .72);
+  box-shadow: 0 16px 48px rgba(60, 54, 45, .052);
+}
+
+.audit-filter-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.audit-filter-card label span {
+  color: #8b8579;
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+.audit-filter-card input,
+.audit-filter-card select {
+  height: 38px;
+  min-width: 0;
+  border: 1px solid rgba(223, 214, 200, .9);
+  border-radius: 999px;
+  background: rgba(251, 250, 247, .78);
+  color: var(--ink);
+  padding: 0 12px;
+  outline: none;
+}
+
+.audit-filter-card button {
+  height: 38px;
+  border: none;
+  border-radius: 999px;
+  background: #3f3a33;
+  color: #fffaf3;
+  padding: 0 16px;
+  cursor: pointer;
+}
+
+.audit-filter-card button:disabled {
+  opacity: .58;
+  cursor: not-allowed;
+}
+
+.audit-allowed {
+  color: #5f7d65 !important;
+}
+
+.audit-blocked {
+  color: #9a5e52 !important;
 }
 
 .table-row span,
@@ -1246,6 +1397,12 @@ h1 {
   font-size: clamp(24px, 4vw, 38px);
   line-height: 1.2;
   letter-spacing: -.04em;
+}
+
+.report-cover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .report-cover button {

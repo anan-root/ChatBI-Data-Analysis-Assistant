@@ -10,12 +10,14 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import uuid
 import shutil
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append("/root/wangshihang/langGraph_agent/smart_data_analysis_assistant")
 import json
 from langchain_community.utilities import SQLDatabase
 from mcp.server import FastMCP
 from public_function import LLM_replay
 from dotenv import load_dotenv
+from core.security import is_python_execution_enabled, run_python_script_in_sandbox
 load_dotenv()
 #%%
 QWEN_API_KEY=os.getenv("QWEN_API_KEY")
@@ -62,60 +64,25 @@ IMAGE_STORAGE_DIR.mkdir(exist_ok=True)  # 确保目录存在
 @mcp.tool()
 async def run_python_script_tool(script_content: str):
     """
-    执行用户提供的Python代码，并返回执行结果或生成的图片路径
+    在默认关闭的受限沙箱中执行 Python 代码，并返回执行结果或生成的图片路径。
+    生产环境默认拒绝任意代码执行；如需本地演示，可设置 CHATBI_ENABLE_PYTHON_EXEC=true。
     :param script_content: 需要执行的Python代码字符串
     :return: 代码运行的最终结果或生成的图片路径信息描述
     """
-    # 获取执行环境中的全局变量
-    execution_env = globals().copy()
-    execution_env.update({
-        'plt': plt,
-        '__name__': '__main__'
-    })
-    try:
-        # 阶段一：表达式求值尝试
-        try:
-            evaluated_result = eval(script_content, execution_env)
-            print("xxx:",evaluated_result)
-            # 检查是否有活动的matplotlib图形
-            if plt.get_fignums():
-                image_path = save_matplotlib_figures()
-                plt.close('all')
-                if image_path:
-                    return format_output(f"根据您的要求,生成的统计图路径:{image_path}")
-            return format_output(str(evaluated_result)) #输出表达式运行结果
-        except SyntaxError:
-            pass  # 不是简单表达式，继续执行代码块
+    if not is_python_execution_enabled():
+        return format_output("安全策略已默认关闭任意 Python 代码执行。若仅本地演示，请设置 CHATBI_ENABLE_PYTHON_EXEC=true 后重启 MCP。")
 
-        # 阶段二：记录执行前的环境状态
-        pre_execution_vars = set(execution_env.keys())
-        # 执行代码块
-        try:
-            exec(script_content, execution_env)
-        except Exception as error:
-            plt.close('all')
-            return format_output(f"执行过程中发生错误: {str(error)}")
-        # 检查是否有活动的matplotlib图形,如果有图形则返回图形所在的路径（生产环境下返回类似oss url链接,一个道理）
-        if plt.get_fignums():
-            image_path = save_matplotlib_figures()
-            plt.close('all')
-            # output["images"] = generated_images
-            return format_output(f"根据您的要求,生成的统计图路径:{image_path}")
-
-        # 阶段三：分析执行后的环境变化;执行完的结果保存在变量中
-        post_execution_vars = set(execution_env.keys())
-        created_vars = post_execution_vars - pre_execution_vars
-        # 处理执行结果
-        output = {}
-        if created_vars:
-            output["variables"] = prepare_output_data(created_vars, execution_env)
-
-        if not output:
-            return format_output("代码执行完成，未产生新的变量或图片") #print(1)
-        return format_output(output)
-    except Exception as e:
-        plt.close('all')
-        return format_output(f"系统错误: {str(e)}")
+    result = run_python_script_in_sandbox(script_content, IMAGE_STORAGE_DIR)
+    if not result.ok:
+        detail = result.reason
+        if result.stderr:
+            detail += f"\n{result.stderr}"
+        return format_output(f"Python 沙箱拒绝或执行失败: {detail}")
+    if result.images:
+        return format_output(f"根据您的要求,生成的统计图路径:{', '.join(result.images)}")
+    if result.stdout:
+        return format_output(result.stdout)
+    return format_output("代码执行完成，未产生新的变量或图片")
 
 #生产环境下这个函数中还需要实现将图像上传到对应的云空间，拿到对应的图像的url link,后续拿着这个link交给前端做呈现渲染
 def save_matplotlib_figures():
