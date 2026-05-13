@@ -41,10 +41,6 @@
 ```text
 .
 ├── requirements.txt
-├── MCP+LangGraph构建专属 ChatBI 数据分析智能助手.md
-├── 2.ChatBI数据分析助手问题.md
-├── 整体架构.png
-├── langGraph图.jpg
 ├── chatbi-react-ui
 │   ├── package.json
 │   ├── vite.config.js
@@ -431,10 +427,3 @@ with urllib.request.urlopen(req, timeout=120) as resp:
 - 增加任务状态流式输出或 WebSocket 推送。
 - 增加缓存层，复用高频查询结果。
 - 增加测试集和 Eval 流程，稳定评估 Text-to-SQL、图表生成和总结质量。
-
-## 参考资料
-
-- `MCP+LangGraph构建专属 ChatBI 数据分析智能助手.md`
-- `2.ChatBI数据分析助手问题.md`
-- `整体架构.png`
-- `langGraph图.jpg`
