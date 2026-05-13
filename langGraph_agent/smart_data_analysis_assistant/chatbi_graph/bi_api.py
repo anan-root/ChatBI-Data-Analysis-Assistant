@@ -165,15 +165,16 @@ def build_schema_profile(df, original_filename):
 
 def infer_business_type_from_schema(schema_profile):
     columns_text = " ".join([schema_profile.get("fileName", ""), *schema_profile.get("columns", [])]).lower()
-    if any(keyword in columns_text for keyword in ["成交", "客户", "金额", "销售", "省份", "区域", "产品"]):
-        return "销售经营"
-    if any(keyword in columns_text for keyword in ["用户", "活跃", "留存", "注册", "访问"]):
-        return "用户运营"
-    if any(keyword in columns_text for keyword in ["库存", "入库", "出库", "仓", "sku"]):
-        return "供应链库存"
-    if any(keyword in columns_text for keyword in ["成本", "利润", "收入", "费用", "预算"]):
-        return "财务经营"
-    return "通用业务"
+    score_map = {
+        "销售经营": ["成交", "销售", "销售额", "订单", "客单价", "客户", "区域", "省份", "产品"],
+        "用户运营": ["用户", "活跃", "留存", "注册", "访问", "登录", "复购", "生命周期"],
+        "财务经营": ["成本", "利润", "收入", "费用", "预算", "毛利", "净利", "应收", "应付"],
+        "库存管理": ["库存", "入库", "出库", "仓", "sku", "库龄", "补货", "周转"],
+        "运营分析": ["活动", "渠道", "转化", "投放", "运营", "留资", "线索", "曝光", "点击"],
+    }
+    scores = {business: sum(1 for keyword in keywords if keyword.lower() in columns_text) for business, keywords in score_map.items()}
+    best_type, best_score = max(scores.items(), key=lambda item: item[1])
+    return best_type if best_score > 0 else "通用业务"
 
 
 def clean_dataframe(raw_df):
@@ -342,15 +343,16 @@ def list_import_jobs(limit=20):
 def infer_business_type(df_or_columns):
     columns = df_or_columns.columns if hasattr(df_or_columns, "columns") else df_or_columns
     columns_text = " ".join(str(column).lower() for column in columns)
-    if any(keyword in columns_text for keyword in ["成交", "客户", "金额", "销售", "省份", "区域", "产品"]):
-        return "销售经营"
-    if any(keyword in columns_text for keyword in ["用户", "活跃", "留存", "注册", "访问"]):
-        return "用户运营"
-    if any(keyword in columns_text for keyword in ["库存", "入库", "出库", "仓", "sku"]):
-        return "供应链库存"
-    if any(keyword in columns_text for keyword in ["成本", "利润", "收入", "费用", "预算"]):
-        return "财务经营"
-    return "通用业务"
+    score_map = {
+        "销售经营": ["成交", "销售", "销售额", "订单", "客单价", "客户", "区域", "省份", "产品"],
+        "用户运营": ["用户", "活跃", "留存", "注册", "访问", "登录", "复购", "生命周期"],
+        "财务经营": ["成本", "利润", "收入", "费用", "预算", "毛利", "净利", "应收", "应付"],
+        "库存管理": ["库存", "入库", "出库", "仓", "sku", "库龄", "补货", "周转"],
+        "运营分析": ["活动", "渠道", "转化", "投放", "运营", "留资", "线索", "曝光", "点击"],
+    }
+    scores = {business: sum(1 for keyword in keywords if keyword.lower() in columns_text) for business, keywords in score_map.items()}
+    best_type, best_score = max(scores.items(), key=lambda item: item[1])
+    return best_type if best_score > 0 else "通用业务"
 
 
 def build_schema_profile_from_metadata(metadata, df=None):
@@ -521,7 +523,95 @@ def pearson_correlation(df, x_column, y_column):
     return round(float(correlation), 4)
 
 
+ANALYSIS_FRAMEWORK_LIBRARY = {
+    "销售经营": {
+        "title": "销售经营分析框架",
+        "goal": "定位成交增长、收入结构、区域效率、客户质量和投入产出问题。",
+        "framework": [
+            "销售漏斗：线索/商机/报价/成交逐层看转化和流失。",
+            "客户分层：按贡献、频次、最近成交识别高价值、潜力、沉默客户。",
+            "区域效率：对比区域贡献、客单、转化和资源覆盖。",
+            "产品结构：识别头部产品、长尾产品、组合销售和结构风险。",
+            "复购分析：观察客户持续购买、复购周期和复购贡献。",
+            "ROI 预留：结合成本、费用、投放字段判断投入产出。",
+        ],
+        "requiredSignals": ["成交金额/销售额", "客户/用户", "产品/品类", "区域/城市", "时间", "成本/费用"],
+        "defaultPath": ["主指标确认", "成交趋势", "产品结构", "区域效率", "客户分层", "异常归因", "策略优先级"],
+    },
+    "用户运营": {
+        "title": "用户运营分析框架",
+        "goal": "定位用户增长、转化、留存、活跃质量和复购问题。",
+        "framework": [
+            "用户分层：按活跃、消费、价值、生命周期拆用户。",
+            "转化漏斗：访问/注册/激活/付费逐步定位卡点。",
+            "留存分析：按 cohort 看次日、7 日、30 日留存。",
+            "复购分析：看重复购买、复购周期和复购金额。",
+            "渠道质量：比较渠道获客质量、转化效率和留存表现。",
+        ],
+        "requiredSignals": ["用户ID", "注册/活跃时间", "渠道", "行为/事件", "付费/订单", "留存标签"],
+        "defaultPath": ["用户规模", "转化漏斗", "留存分层", "复购贡献", "渠道质量", "策略优先级"],
+    },
+    "财务经营": {
+        "title": "财务经营分析框架",
+        "goal": "定位收入、成本、利润、预算偏差和 ROI 健康度。",
+        "framework": [
+            "收入结构：按业务线/产品/区域拆收入贡献。",
+            "成本结构：拆固定成本、变动成本、费用项和异常支出。",
+            "利润质量：关注毛利率、净利率、利润贡献和低毛利单元。",
+            "预算偏差：对比实际、预算和目标达成。",
+            "ROI：计算投入产出和费用效率。",
+        ],
+        "requiredSignals": ["收入", "成本", "费用", "利润", "预算/目标", "期间"],
+        "defaultPath": ["收入概览", "成本结构", "利润质量", "预算偏差", "ROI", "风险提示"],
+    },
+    "库存管理": {
+        "title": "库存管理分析框架",
+        "goal": "定位库存周转、缺货、滞销、SKU 结构和仓储效率问题。",
+        "framework": [
+            "库存结构：按 SKU/品类/仓库看库存占用。",
+            "周转效率：用销量、库存和天数判断周转快慢。",
+            "缺货风险：识别低库存高销量 SKU。",
+            "滞销风险：识别高库存低销量 SKU。",
+            "仓库效率：比较仓库库存占用、出入库和周转表现。",
+        ],
+        "requiredSignals": ["SKU/产品", "库存量", "销量/出库", "入库", "仓库", "日期"],
+        "defaultPath": ["库存总览", "SKU 结构", "周转效率", "缺货风险", "滞销风险", "补货建议"],
+    },
+    "运营分析": {
+        "title": "运营活动分析框架",
+        "goal": "定位活动效果、渠道质量、转化效率、投放 ROI 和运营动作优先级。",
+        "framework": [
+            "活动效果：对比活动前后核心指标变化。",
+            "渠道质量：比较渠道流量、线索、转化和成本。",
+            "转化路径：识别曝光/点击/留资/成交卡点。",
+            "人群分层：按来源、行为、价值分层运营。",
+            "投放 ROI：结合费用和收入衡量投入产出。",
+        ],
+        "requiredSignals": ["活动/渠道", "曝光/点击", "线索/转化", "成本/投放", "收入/成交", "日期"],
+        "defaultPath": ["活动概览", "渠道对比", "转化漏斗", "人群分层", "ROI", "动作优先级"],
+    },
+    "通用业务": {
+        "title": "通用指标诊断框架",
+        "goal": "在业务语义不足时，先完成指标、维度、趋势和异常的基础诊断。",
+        "framework": [
+            "数据画像：确认字段角色、缺失和唯一值。",
+            "指标树：选择主指标和辅助指标。",
+            "维度贡献：按核心维度拆结构。",
+            "趋势异常：识别时间波动和异常周期。",
+            "归因假设：用维度差异形成下一步检查路径。",
+        ],
+        "requiredSignals": ["核心数值指标", "业务维度", "时间字段", "唯一标识"],
+        "defaultPath": ["数据画像", "主指标确认", "维度贡献", "趋势异常", "归因假设"],
+    },
+}
+
+
+def analysis_framework_for(business_type):
+    return ANALYSIS_FRAMEWORK_LIBRARY.get(business_type, ANALYSIS_FRAMEWORK_LIBRARY["通用业务"])
+
+
 def build_business_methodology(business_type, columns, numeric, categorical, primary_metric, primary_dimension, date_columns):
+    framework = analysis_framework_for(business_type)
     methods = []
     if business_type == "销售经营":
         methods.extend(
@@ -551,6 +641,24 @@ def build_business_methodology(business_type, columns, numeric, categorical, pri
                 {"name": "产品/区域利润结构", "fit": "中" if primary_dimension and primary_metric else "低", "question": "利润由哪些业务单元贡献？", "requiredFields": [primary_dimension or "业务维度", primary_metric or "利润/收入"], "output": "利润贡献、低毛利单元、提效方向"},
             ]
         )
+    elif business_type == "库存管理":
+        methods.extend(
+            [
+                {"name": "库存结构", "fit": "高" if has_column_keyword(columns, ["库存", "sku", "SKU", "产品", "品类"]) else "中", "question": "库存占用集中在哪些 SKU/品类/仓库？", "requiredFields": ["SKU/产品", "库存量", "仓库/品类"], "output": "库存占用结构、头部 SKU、仓库压力"},
+                {"name": "周转效率", "fit": "高" if has_column_keyword(columns, ["库存", "销量", "出库"]) else "待补字段", "question": "哪些商品周转快，哪些商品占用库存？", "requiredFields": ["库存量", "销量/出库", "日期"], "output": "周转快慢、补货优先级、滞销风险"},
+                {"name": "缺货风险", "fit": "中" if has_column_keyword(columns, ["库存", "销量", "安全库存"]) else "低", "question": "哪些高销量 SKU 可能缺货？", "requiredFields": ["库存量", "销量", "安全库存"], "output": "缺货预警、补货建议"},
+                {"name": "滞销风险", "fit": "中" if has_column_keyword(columns, ["库存", "销量", "库龄"]) else "低", "question": "哪些 SKU 高库存低动销？", "requiredFields": ["库存量", "销量/出库", "库龄"], "output": "滞销清单、促销/清仓建议"},
+            ]
+        )
+    elif business_type == "运营分析":
+        methods.extend(
+            [
+                {"name": "活动效果", "fit": "高" if has_column_keyword(columns, ["活动", "运营", "转化"]) and date_columns else "中", "question": "运营活动是否带来核心指标提升？", "requiredFields": ["活动", primary_metric or "核心指标", "日期"], "output": "活动前后对比、增量效果、复盘建议"},
+                {"name": "渠道质量", "fit": "高" if has_column_keyword(columns, ["渠道", "来源"]) else "低", "question": "哪些渠道带来高质量转化？", "requiredFields": ["渠道/来源", "线索/转化", "成本/收入"], "output": "渠道贡献、渠道效率、预算建议"},
+                {"name": "转化路径", "fit": "中" if has_column_keyword(columns, ["曝光", "点击", "留资", "转化", "成交"]) else "低", "question": "从触达到成交卡在哪一步？", "requiredFields": ["曝光/点击/留资/成交", "时间", "渠道"], "output": "转化短板、漏斗优化动作"},
+                {"name": "投放 ROI", "fit": "高" if has_column_keyword(columns, ["投放", "成本", "费用", "收入"]) else "待补字段", "question": "投入是否产生有效回报？", "requiredFields": ["投放/费用", "收入/成交", "渠道/活动"], "output": "ROI、CPA、预算增减建议"},
+            ]
+        )
     else:
         methods.extend(
             [
@@ -559,6 +667,11 @@ def build_business_methodology(business_type, columns, numeric, categorical, pri
                 {"name": "趋势异常", "fit": "高" if primary_metric and date_columns else "低", "question": "核心指标是否出现异常波动？", "requiredFields": [date_columns[0] if date_columns else "时间字段", primary_metric or "指标"], "output": "波动周期、异常等级、复盘方向"},
             ]
         )
+    method_names = {method["name"] for method in methods}
+    for item in framework["framework"]:
+        name = item.split("：", 1)[0]
+        if name not in method_names:
+            methods.append({"name": name, "fit": "框架建议", "question": item, "requiredFields": framework["requiredSignals"][:3], "output": "专项诊断结论与行动路径"})
     return methods
 
 
@@ -662,8 +775,127 @@ def build_monetization_suggestions(primary_metric, numeric_profile):
     return suggestions
 
 
+def build_data_profile(df, schema_profile, numeric, categorical, date_columns, metadata):
+    rows = len(df)
+    columns = list(df.columns)
+    missing_cells = int(df.isna().sum().sum())
+    total_cells = rows * len(columns) if rows and columns else 0
+    missing_rate = round(missing_cells / total_cells * 100, 2) if total_cells else 0
+    duplicate_rate = round(metadata.get("removedDuplicateRows", 0) / max(metadata.get("rowsBefore", rows), 1) * 100, 2)
+    high_missing_fields = [
+        {"name": field["name"], "missingRate": round(field.get("missingRate", 0) * 100, 2), "role": field.get("role", "unknown")}
+        for field in schema_profile.get("fields", [])
+        if field.get("missingRate", 0) >= 0.2
+    ][:6]
+    high_cardinality_dimensions = [
+        {"name": column, "uniqueCount": int(df[column].nunique(dropna=True))}
+        for column in categorical
+        if df[column].nunique(dropna=True) >= max(20, rows * 0.2)
+    ][:6]
+    metric_ranges = []
+    for column in numeric[:8]:
+        series = pd.to_numeric(df[column], errors="coerce")
+        metric_ranges.append(
+            {
+                "name": column,
+                "min": round(float(series.min()), 4) if series.notna().any() else 0,
+                "max": round(float(series.max()), 4) if series.notna().any() else 0,
+                "mean": round(float(series.mean()), 4) if series.notna().any() else 0,
+                "zeroRate": round(float((series == 0).mean() * 100), 2) if len(series) else 0,
+            }
+        )
+    return {
+        "rowCount": rows,
+        "columnCount": len(columns),
+        "metricCount": len(numeric),
+        "dimensionCount": len(categorical),
+        "timeCount": len(date_columns),
+        "missingRate": missing_rate,
+        "duplicateRate": duplicate_rate,
+        "highMissingFields": high_missing_fields,
+        "highCardinalityDimensions": high_cardinality_dimensions,
+        "metricRanges": metric_ranges,
+        "roleCounts": schema_profile.get("roleCounts", {}),
+        "profileSummary": f"该表包含 {rows} 行、{len(columns)} 个字段，其中数值指标 {len(numeric)} 个、维度 {len(categorical)} 个、时间字段 {len(date_columns)} 个，整体缺失率 {missing_rate}%。",
+    }
+
+
+def build_quality_score(data_profile, metadata, primary_metric, primary_dimension, date_columns):
+    score = 100
+    penalties = []
+    if data_profile["missingRate"] > 0:
+        penalty = min(25, data_profile["missingRate"] * 0.8)
+        score -= penalty
+        penalties.append({"item": "缺失值", "penalty": round(penalty, 1), "detail": f"整体缺失率 {data_profile['missingRate']}%。"})
+    if data_profile["duplicateRate"] > 0:
+        penalty = min(15, data_profile["duplicateRate"])
+        score -= penalty
+        penalties.append({"item": "重复行", "penalty": round(penalty, 1), "detail": f"导入清洗前重复/空行占比约 {data_profile['duplicateRate']}%。"})
+    if not primary_metric:
+        score -= 20
+        penalties.append({"item": "主指标", "penalty": 20, "detail": "未识别明确主指标，诊断深度会下降。"})
+    if not primary_dimension:
+        score -= 12
+        penalties.append({"item": "核心维度", "penalty": 12, "detail": "缺少适合分组分析的核心维度。"})
+    if not date_columns:
+        score -= 10
+        penalties.append({"item": "时间字段", "penalty": 10, "detail": "缺少稳定时间字段，无法做趋势和留存类分析。"})
+    if data_profile["rowCount"] < 30:
+        score -= 10
+        penalties.append({"item": "样本量", "penalty": 10, "detail": "数据行数较少，显著性和异常判断偏弱。"})
+    score = max(0, round(score, 1))
+    if score >= 85:
+        grade = "A"
+        summary = "数据质量较好，可直接进入诊断型分析。"
+    elif score >= 70:
+        grade = "B"
+        summary = "数据质量可用，建议关注少量字段补齐和口径确认。"
+    elif score >= 55:
+        grade = "C"
+        summary = "数据可做初步分析，但需要先补齐关键字段。"
+    else:
+        grade = "D"
+        summary = "数据质量偏弱，建议先治理字段、样本和业务口径。"
+    return {
+        "score": score,
+        "grade": grade,
+        "summary": summary,
+        "penalties": penalties,
+        "cleaningSummary": f"清洗删除重复行 {metadata.get('removedDuplicateRows', 0)} 行、空行 {metadata.get('removedEmptyRows', 0)} 行，类型转换 {len(metadata.get('typeChanges', []))} 个字段。",
+    }
+
+
+def build_recommended_paths(business_type, framework, data_profile, quality_score, primary_metric, primary_dimension, date_columns):
+    paths = []
+    for index, step in enumerate(framework["defaultPath"], start=1):
+        readiness = "可执行"
+        reason = "字段已满足基础分析。"
+        if step in ["成交趋势", "趋势异常", "留存分层", "活动概览"] and not date_columns:
+            readiness = "需补字段"
+            reason = "缺少时间字段。"
+        if step in ["产品结构", "区域效率", "客户分层", "渠道对比", "SKU 结构"] and not primary_dimension:
+            readiness = "需补字段"
+            reason = "缺少核心维度。"
+        if step in ["ROI", "预算偏差", "投放 ROI"] and quality_score["grade"] in ["C", "D"]:
+            readiness = "建议后置"
+            reason = "需要先确认成本/费用/预算等字段口径。"
+        paths.append(
+            {
+                "order": index,
+                "name": step,
+                "readiness": readiness,
+                "reason": reason,
+                "output": f"围绕 `{primary_metric or '核心指标'}` 输出 {step} 诊断结论。",
+            }
+        )
+    if data_profile["missingRate"] >= 10:
+        paths.insert(0, {"order": 0, "name": "数据治理优先", "readiness": "优先处理", "reason": "缺失率较高。", "output": "先补齐关键字段，再进入业务诊断。"})
+    return paths
+
+
 def build_analysis_plan(business_type, schema_profile, numeric, categorical, date_columns, primary_metric, primary_dimension):
     columns = schema_profile.get("columns", [])
+    framework = analysis_framework_for(business_type)
     modules = ["指标体系", "数据清洗质量", "SQL 分析模板"]
     if primary_metric and primary_dimension:
         modules.extend(["BI 看板", "维度贡献分析", "归因诊断"])
@@ -692,6 +924,7 @@ def build_analysis_plan(business_type, schema_profile, numeric, categorical, dat
 
     return {
         "name": f"{business_type}分析方案",
+        "framework": framework,
         "focus": focus,
         "confidence": "高" if primary_metric and (primary_dimension or date_columns) else "中",
         "inputPolicy": "schema-only",
@@ -824,6 +1057,54 @@ def build_workspace_charts(df, primary_metric, primary_dimension, date_columns, 
             }
         )
     return charts
+
+
+def build_interactive_chart_config(df, numeric, categorical, date_columns):
+    metrics = numeric[:12]
+    dimensions = categorical[:12]
+    time_grains = [{"key": "month", "label": "月"}, {"key": "quarter", "label": "季"}, {"key": "year", "label": "年"}]
+    config = {
+        "metrics": metrics,
+        "dimensions": dimensions,
+        "dateColumns": date_columns[:6],
+        "timeGrains": time_grains,
+        "defaultMetric": metrics[0] if metrics else None,
+        "defaultDimension": dimensions[0] if dimensions else None,
+        "defaultDateColumn": date_columns[0] if date_columns else None,
+        "datasets": {"bars": {}, "pies": {}, "lines": {}, "scatters": {}},
+    }
+    for metric in metrics[:8]:
+        for dimension in dimensions[:8]:
+            top_items = summarize_top_categories(df, dimension, metric, limit=12)
+            key = f"{metric}||{dimension}"
+            config["datasets"]["bars"][key] = {"x": [item["name"] for item in top_items], "y": [item["value"] for item in top_items]}
+            config["datasets"]["pies"][key] = {"data": top_items[:8]}
+    for metric in metrics[:8]:
+        for date_column in date_columns[:4]:
+            tmp = pd.DataFrame(
+                {
+                    "__date": df[date_column],
+                    "__metric": pd.to_numeric(df[metric], errors="coerce"),
+                }
+            )
+            tmp["__date"] = pd.to_datetime(tmp["__date"], errors="coerce")
+            tmp = tmp.dropna(subset=["__date"])
+            if tmp.empty:
+                continue
+            for grain in ["month", "quarter", "year"]:
+                if grain == "month":
+                    grouped = tmp.groupby(tmp["__date"].dt.to_period("M"))["__metric"].sum().sort_index()
+                elif grain == "quarter":
+                    grouped = tmp.groupby(tmp["__date"].dt.to_period("Q"))["__metric"].sum().sort_index()
+                else:
+                    grouped = tmp.groupby(tmp["__date"].dt.to_period("Y"))["__metric"].sum().sort_index()
+                key = f"{metric}||{date_column}||{grain}"
+                config["datasets"]["lines"][key] = {"x": [str(index) for index in grouped.index], "y": [round(float(value), 4) for value in grouped.values]}
+    for index, metric in enumerate(metrics[:5]):
+        for other_metric in metrics[index + 1 : index + 4]:
+            key = f"{metric}||{other_metric}"
+            config["datasets"]["scatters"][key] = {"data": build_scatter_points(df, metric, other_metric), "xName": metric, "yName": other_metric}
+    return config
 
 
 def build_benchmark_summary(top_categories, trend, primary_metric, primary_dimension):
@@ -1082,6 +1363,40 @@ def build_methodology_sections(methodology, benchmark_summary, driver_analysis, 
     ]
 
 
+def build_workspace_modules(business_type, data_profile=None, primary_metric=None, primary_dimension=None, date_columns=None):
+    modules = [
+        {"key": "overview", "label": "空间总览", "description": "数据画像、质量评分、推荐路径和方案库命中。"},
+        {"key": "report", "label": "诊断报告", "description": "按现象、对比、异常、归因假设、行动建议组织报告。"},
+        {"key": "dashboard", "label": "BI 看板", "description": "核心指标、图表推荐和交互式维度/指标切换。"},
+        {"key": "metrics", "label": "指标体系", "description": "该业务空间专属指标口径、SQL 模板和字段映射。"},
+    ]
+    if primary_metric and date_columns:
+        modules.append({"key": "anomaly", "label": "异常监控", "description": "环比、偏离均值和异常原因假设。"})
+    if business_type in ["销售经营", "用户运营", "运营分析"]:
+        modules.append({"key": "growth", "label": "增长分析", "description": "客户/用户/渠道分层、转化和复购分析。"})
+    if business_type in ["销售经营", "财务经营", "运营分析"]:
+        modules.append({"key": "finance", "label": "变现/ROI", "description": "收入、成本、预算、ROI 和投入产出分析。"})
+    if business_type == "库存管理":
+        modules.append({"key": "inventory", "label": "库存诊断", "description": "SKU 结构、周转效率、缺货风险和滞销风险。"})
+    modules.append({"key": "export", "label": "导出与入库", "description": "报告下载、清洗质量和入库表信息。"})
+    return modules
+
+
+def build_diagnostic_story(insights, benchmark_summary, anomaly_diagnosis, driver_analysis, priority_actions, primary_metric):
+    phenomenon = " ".join(insights) if insights else f"当前报告围绕 `{primary_metric or '核心指标'}` 建立诊断链路。"
+    comparison = " ".join(f"{item['name']}：{item['value']}，{item['diagnosis']}" for item in benchmark_summary) if benchmark_summary else "暂缺稳定基准，建议补充时间字段或目标字段形成可对比口径。"
+    anomaly = " ".join(item["finding"] for item in anomaly_diagnosis) if anomaly_diagnosis else "暂未发现高等级异常，当前重点应放在结构优化和口径确认。"
+    attribution = " ".join(f"{item['diagnosis']} {item['hypothesis']}" for item in driver_analysis[:3]) if driver_analysis else "暂未形成稳定归因假设，建议增加业务维度或更长周期数据。"
+    actions = " ".join(f"{item['priority']}：{item['title']}，{item['nextStep']}" for item in priority_actions[:4]) if priority_actions else "先确认主指标、核心维度和时间字段，再配置分析路径。"
+    return [
+        {"stage": "现象", "title": "先确认发生了什么", "content": phenomenon},
+        {"stage": "对比", "title": "再看是否偏离基准", "content": comparison},
+        {"stage": "异常", "title": "定位需要复盘的波动", "content": anomaly},
+        {"stage": "归因假设", "title": "提出可验证原因", "content": attribution},
+        {"stage": "行动建议", "title": "按优先级推进动作", "content": actions},
+    ]
+
+
 def build_workspace_report(job_id):
     metadata, cleaned_file = get_import_job_file(job_id)
     df = pd.read_csv(cleaned_file, encoding="utf-8-sig")
@@ -1111,6 +1426,10 @@ def build_workspace_report(job_id):
     top_categories = summarize_top_categories(df, primary_dimension, primary_metric) if primary_dimension else []
     analysis_plan = build_analysis_plan(business_type, schema_profile, numeric, categorical, date_columns, primary_metric, primary_dimension)
     charts = build_workspace_charts(df, primary_metric, primary_dimension, date_columns, numeric, analysis_plan.get("chartBlueprints"))
+    data_profile = build_data_profile(df, schema_profile, numeric, categorical, date_columns, metadata)
+    quality_score = build_quality_score(data_profile, metadata, primary_metric, primary_dimension, date_columns)
+    recommended_paths = build_recommended_paths(business_type, analysis_plan["framework"], data_profile, quality_score, primary_metric, primary_dimension, date_columns)
+    interactiveCharts = build_interactive_chart_config(df, numeric, categorical, date_columns)
 
     trend = []
     if date_columns and primary_metric:
@@ -1148,6 +1467,8 @@ def build_workspace_report(job_id):
     significance_tests = build_significance_tests(df, primary_metric, categorical, numeric)
     priority_actions = build_priority_actions(business_type, primary_metric, primary_dimension, benchmark_summary, driver_analysis, anomaly_diagnosis, columns)
     executive_summary = build_executive_summary(business_type, primary_metric, primary_dimension, top_categories, trend, numeric_profile, analysis_plan)
+    diagnostic_story = build_diagnostic_story(insights, benchmark_summary, anomaly_diagnosis, driver_analysis, priority_actions, primary_metric)
+    workspace_modules = build_workspace_modules(business_type, data_profile, primary_metric, primary_dimension, date_columns)
     methodology_sections = build_methodology_sections(
         analysis_plan.get("methodology", []),
         benchmark_summary,
@@ -1160,19 +1481,19 @@ def build_workspace_report(job_id):
     sections = [
         {
             "title": "业务空间概览",
-            "content": f"该空间来自 `{metadata['originalFilename']}`，识别为 `{metadata.get('businessType') or infer_business_type(df)}`，清洗后包含 {rows} 行、{len(columns)} 个字段。",
+            "content": f"该空间来自 `{metadata['originalFilename']}`，识别为 `{metadata.get('businessType') or infer_business_type(df)}`，清洗后包含 {rows} 行、{len(columns)} 个字段。数据质量评分 {quality_score['score']} 分（{quality_score['grade']}），{quality_score['summary']}",
         },
         {
-            "title": "字段结构",
-            "content": f"数值字段 {len(numeric)} 个，维度字段 {len(categorical)} 个，时间字段 {len(date_columns)} 个。主要字段包括：{', '.join(columns[:10])}。",
+            "title": "数据画像",
+            "content": f"{data_profile['profileSummary']} 高缺失字段 {len(data_profile['highMissingFields'])} 个，高基数维度 {len(data_profile['highCardinalityDimensions'])} 个。主要字段包括：{', '.join(columns[:10])}。",
         },
         {
             "title": "AI 分析方案预判",
-            "content": f"系统选择 `{analysis_plan['name']}`，置信度 `{analysis_plan['confidence']}`。{analysis_plan['focus']} 本次启用模块：{', '.join(analysis_plan['selectedModules'])}。{analysis_plan['inputSummary']}",
+            "content": f"系统选择 `{analysis_plan['framework']['title']}`，置信度 `{analysis_plan['confidence']}`。{analysis_plan['focus']} 推荐路径：{' → '.join(item['name'] for item in recommended_paths[:6])}。{analysis_plan['inputSummary']}",
         },
         {
-            "title": "核心发现",
-            "content": " ".join(insights),
+            "title": "问题诊断链路",
+            "content": " ".join(f"{item['stage']}：{item['content']}" for item in diagnostic_story),
         },
         *methodology_sections,
         {
@@ -1216,6 +1537,7 @@ def build_workspace_report(job_id):
             "createdAt": metadata["createdAt"],
             "imported": metadata.get("imported", False),
             "dbTable": metadata.get("dbTable"),
+            "workspaceModules": workspace_modules,
             "summaryCards": [
                 {"label": "数据行数", "value": rows, "unit": "行", "note": "清洗后的可分析记录"},
                 {"label": "字段数量", "value": len(columns), "unit": "个", "note": "自动标准化后的字段"},
@@ -1227,6 +1549,11 @@ def build_workspace_report(job_id):
             "executiveSummary": executive_summary,
             "analysisPlan": analysis_plan,
             "charts": charts,
+            "interactiveCharts": interactiveCharts,
+            "dataProfile": data_profile,
+            "qualityScore": quality_score,
+            "recommendedPaths": recommended_paths,
+            "diagnosticStory": diagnostic_story,
             "methodology": analysis_plan.get("methodology", []),
             "benchmarkSummary": benchmark_summary,
             "driverAnalysis": driver_analysis,
@@ -1252,23 +1579,41 @@ def build_workspace_report(job_id):
     )
 
 
-def list_business_workspaces(limit=20):
+def list_business_workspaces(limit=200):
     workspaces = []
     for job in list_import_jobs(limit)["jobs"]:
+        schema_profile = job.get("schemaProfile") or {}
+        role_counts = schema_profile.get("roleCounts", {})
+        business_type = job.get("businessType", "通用业务")
+        preview_modules = build_workspace_modules(
+            business_type,
+            None,
+            "主指标" if role_counts.get("metric", 0) else None,
+            "核心维度" if role_counts.get("dimension", 0) else None,
+            ["时间"] if role_counts.get("time", 0) else [],
+        )
         workspaces.append(
             {
                 "workspaceId": job["jobId"],
                 "name": job.get("workspaceName") or Path(job["originalFilename"]).stem,
-                "businessType": job.get("businessType", "通用业务"),
+                "businessType": business_type,
                 "sourceFile": job["originalFilename"],
                 "createdAt": job["createdAt"],
                 "rows": job.get("rowsAfter", 0),
                 "columns": job.get("columnsAfter", 0),
                 "imported": job.get("imported", False),
                 "dbTable": job.get("dbTable"),
+                "roleCounts": role_counts,
+                "moduleCount": len(preview_modules),
+                "modules": preview_modules,
             }
         )
-    return {"workspaces": workspaces}
+    groups = []
+    for business_type in ["销售经营", "用户运营", "财务经营", "库存管理", "运营分析", "通用业务"]:
+        items = [workspace for workspace in workspaces if workspace["businessType"] == business_type]
+        if items:
+            groups.append({"businessType": business_type, "count": len(items), "workspaces": items})
+    return {"workspaces": workspaces, "groups": groups}
 
 
 def write_workspace_report_markdown_file(job_id):
@@ -1414,6 +1759,34 @@ def commit_import_job(job_id, table_name=None):
         "dbTable": target_table_name,
         "rows": len(df),
         "columns": columns,
+    }
+
+
+def commit_import_jobs(job_ids):
+    results = []
+    for job_id in job_ids:
+        try:
+            metadata = load_import_job(job_id)
+            if metadata.get("imported"):
+                results.append(
+                    {
+                        "jobId": job_id,
+                        "ok": True,
+                        "skipped": True,
+                        "dbTable": metadata.get("dbTable"),
+                        "message": "已入库，跳过重复入库。",
+                    }
+                )
+                continue
+            committed = commit_import_job(job_id)
+            results.append({"ok": True, "skipped": False, **committed})
+        except Exception as exc:
+            results.append({"jobId": job_id, "ok": False, "message": str(exc)})
+    return {
+        "total": len(job_ids),
+        "success": sum(1 for item in results if item.get("ok")),
+        "failed": sum(1 for item in results if not item.get("ok")),
+        "results": results,
     }
 
 

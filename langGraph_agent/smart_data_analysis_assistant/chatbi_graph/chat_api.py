@@ -39,6 +39,7 @@ from bi_api import (
     build_user_growth_data,
     build_workspace_report,
     commit_import_job,
+    commit_import_jobs,
     get_import_job,
     get_import_job_file,
     list_business_workspaces,
@@ -67,6 +68,10 @@ class UserInput(BaseModel):
 
 class ImportCommitInput(BaseModel):
     table_name: str | None = None
+
+
+class BatchCommitInput(BaseModel):
+    job_ids: list[str]
 
 
 @app.get("/bi/dashboard")
@@ -150,6 +155,41 @@ async def bi_import_upload(file: UploadFile = File(...)):
             pass
 
 
+@app.post("/bi/import-clean/upload-batch")
+async def bi_import_upload_batch(files: list[UploadFile] = File(...)):
+    if not files:
+        raise HTTPException(status_code=400, detail="请选择至少一个文件。")
+    results = []
+    for file in files:
+        filename = file.filename or "uploaded.csv"
+        suffix = os.path.splitext(filename)[1].lower()
+        if suffix not in [".csv", ".xlsx", ".xls"]:
+            results.append({"filename": filename, "ok": False, "detail": "仅支持 CSV、XLSX、XLS 文件。"})
+            continue
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            shutil.copyfileobj(file.file, temp_file)
+            temp_path = temp_file.name
+
+        try:
+            results.append({"filename": filename, "ok": True, "job": process_import_file(temp_path, filename)})
+        except ValueError as exc:
+            results.append({"filename": filename, "ok": False, "detail": str(exc)})
+        except Exception as exc:
+            results.append({"filename": filename, "ok": False, "detail": f"导入清洗失败：{exc}"})
+        finally:
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+    return {
+        "total": len(files),
+        "success": sum(1 for item in results if item.get("ok")),
+        "failed": sum(1 for item in results if not item.get("ok")),
+        "results": results,
+    }
+
+
 @app.get("/bi/import-clean/jobs/{job_id}")
 async def bi_import_job(job_id: str):
     try:
@@ -178,6 +218,13 @@ async def bi_import_commit(job_id: str, payload: ImportCommitInput):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"确认入库失败：{exc}") from exc
+
+
+@app.post("/bi/import-clean/jobs/batch-commit")
+async def bi_import_batch_commit(payload: BatchCommitInput):
+    if not payload.job_ids:
+        raise HTTPException(status_code=400, detail="请选择至少一个导入任务。")
+    return commit_import_jobs(payload.job_ids)
 
 
 @app.get("/bi/export/report")

@@ -14,6 +14,8 @@ import {
   Gauge,
   HardDriveUpload,
   LayoutDashboard,
+  PanelLeftClose,
+  PanelLeftOpen,
   Loader2,
   MessageSquareText,
   Network,
@@ -33,16 +35,9 @@ const suggestions = [
 ];
 
 const navItems = [
-  { key: 'chat', icon: <MessageSquareText size={16} />, label: '数据问答' },
   { key: 'workspaces', icon: <BriefcaseBusiness size={16} />, label: '业务空间' },
-  { key: 'sql', icon: <DatabaseZap size={16} />, label: 'SQL 分析' },
-  { key: 'dashboard', icon: <LayoutDashboard size={16} />, label: 'BI 看板' },
-  { key: 'metrics', icon: <Gauge size={16} />, label: '指标体系' },
-  { key: 'anomalies', icon: <Activity size={16} />, label: '异常分析' },
-  { key: 'growth', icon: <UsersRound size={16} />, label: '用户增长' },
-  { key: 'monetization', icon: <Coins size={16} />, label: '变现成本' },
-  { key: 'report', icon: <FileText size={16} />, label: '分析报告' },
-  { key: 'importClean', icon: <HardDriveUpload size={16} />, label: '导入导出' },
+  { key: 'importClean', icon: <HardDriveUpload size={16} />, label: '批量导入' },
+  { key: 'chat', icon: <MessageSquareText size={16} />, label: '数据问答' },
   { key: 'rag', icon: <Network size={16} />, label: 'RAG 知识库' },
   { key: 'quick', icon: <Search size={16} />, label: '快速查询' },
   { key: 'templates', icon: <BarChart3 size={16} />, label: '分析模板' },
@@ -63,19 +58,19 @@ const analysisTemplates = [
 ];
 
 const pageCopy = {
-  chat: ['📊', '数据分析助手', '像写文档一样提问，让智能体完成查询、计算和分析。'],
-  workspaces: ['🏢', '业务空间', '按上传数据隔离业务上下文，每个表都有独立报告和分析口径。'],
-  sql: ['🧮', 'SQL 分析', '沉淀自然语言查数、聚合统计、对比分析和环比模板。'],
-  dashboard: ['📌', 'BI 看板', '核心指标、月度趋势和商品排行集中展示。'],
-  metrics: ['🧭', '指标体系', '沉淀业务口径，统一指标定义、来源和应用场景。'],
-  anomalies: ['⚠️', '异常分析', '识别核心指标波动，辅助定位业务异常月份。'],
-  growth: ['🌱', '用户增长', '围绕活跃、分层和运营动作评估用户增长机会。'],
-  monetization: ['💰', '变现成本', '估算收入贡献，预留成本、ROI 和毛利分析口径。'],
-  report: ['📝', '分析报告', '自动输出“现象、原因、异常、建议”的结构化报告。'],
-  importClean: ['🧹', '导入导出', '企业数据导入后自动清洗，并支持导出清洗结果、字段映射和分析报告。'],
-  rag: ['🧠', 'RAG 知识库', '企业知识库增强能力，默认不参与问答链路，可按需启用。'],
-  quick: ['🔎', '快速查询', '常用问题一键填入或直接执行，适合先验证字段和结果。'],
-  templates: ['📈', '分析模板', '把重复的数据分析流程做成模板，点击即可发起任务。'],
+  chat: ['📊', '数据分析助手', '像写文档一样提问，让智能体完成查询、计算和分析。', 'Ask with data'],
+  workspaces: ['🏢', '业务空间', '先选择业务空间，再进入该空间的报告、看板、指标体系、异常监控和导出入库。', 'Business spaces'],
+  sql: ['🧮', 'SQL 分析', '沉淀自然语言查数、聚合统计、对比分析和环比模板。', 'Query studio'],
+  dashboard: ['📌', 'BI 看板', '核心指标、月度趋势和商品排行集中展示。', 'BI dashboard'],
+  metrics: ['🧭', '指标体系', '沉淀业务口径，统一指标定义、来源和应用场景。', 'Metric system'],
+  anomalies: ['⚠️', '异常分析', '识别核心指标波动，辅助定位业务异常月份。', 'Anomaly review'],
+  growth: ['🌱', '用户增长', '围绕活跃、分层和运营动作评估用户增长机会。', 'Growth lab'],
+  monetization: ['💰', '变现成本', '估算收入贡献，预留成本、ROI 和毛利分析口径。', 'ROI desk'],
+  report: ['📝', '分析报告', '自动输出“现象、原因、异常、建议”的结构化报告。', 'Insight report'],
+  importClean: ['🧹', '批量导入', '多文件上传后自动清洗、识别业务类型，并支持一键批量入库形成业务空间。', 'Data intake'],
+  rag: ['🧠', 'RAG 知识库', '企业知识库增强能力，默认不参与问答链路，可按需启用。', 'Knowledge base'],
+  quick: ['🔎', '快速查询', '常用问题一键填入或直接执行，适合先验证字段和结果。', 'Quick query'],
+  templates: ['📈', '分析模板', '把重复的数据分析流程做成模板，点击即可发起任务。', 'Analysis templates'],
 };
 
 function MarkdownLite({ text }) {
@@ -301,6 +296,122 @@ function ReportView({ data }) {
   );
 }
 
+function InteractiveCharts({ config, palette }) {
+  const [metric, setMetric] = useState(config?.defaultMetric || config?.metrics?.[0] || '');
+  const [dimension, setDimension] = useState(config?.defaultDimension || config?.dimensions?.[0] || '');
+  const [dateColumn, setDateColumn] = useState(config?.defaultDateColumn || config?.dateColumns?.[0] || '');
+  const [timeGrain, setTimeGrain] = useState(config?.timeGrains?.[0]?.key || 'month');
+  const [scatterY, setScatterY] = useState((config?.metrics || []).find((item) => item !== metric) || '');
+
+  if (!config || (!config.metrics?.length && !config.dimensions?.length)) return null;
+
+  const barKey = `${metric}||${dimension}`;
+  const lineKey = `${metric}||${dateColumn}||${timeGrain}`;
+  const scatterKey = `${metric}||${scatterY}`;
+  const barData = config.datasets?.bars?.[barKey] || { x: [], y: [] };
+  const pieData = config.datasets?.pies?.[barKey] || { data: [] };
+  const lineData = config.datasets?.lines?.[lineKey] || { x: [], y: [] };
+  const scatterData = config.datasets?.scatters?.[scatterKey] || config.datasets?.scatters?.[`${scatterY}||${metric}`] || { data: [], xName: metric, yName: scatterY };
+
+  const barOption = {
+    color: palette,
+    grid: { left: 70, right: 20, top: 28, bottom: 70 },
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: barData.x, axisLabel: { rotate: 28 } },
+    yAxis: { type: 'value' },
+    series: [{ type: 'bar', barMaxWidth: 34, data: barData.y }],
+  };
+  const pieOption = {
+    color: palette,
+    tooltip: { trigger: 'item' },
+    series: [{ type: 'pie', radius: ['42%', '70%'], data: (pieData.data || []).map((item) => ({ name: item.name, value: item.value })) }],
+  };
+  const lineOption = {
+    color: palette,
+    grid: { left: 54, right: 20, top: 28, bottom: 36 },
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: lineData.x },
+    yAxis: { type: 'value' },
+    series: [{ type: 'line', smooth: true, symbolSize: 7, areaStyle: { opacity: 0.1 }, data: lineData.y }],
+  };
+  const scatterOption = {
+    color: palette,
+    grid: { left: 60, right: 24, top: 30, bottom: 42 },
+    tooltip: { trigger: 'item' },
+    xAxis: { type: 'value', name: scatterData.xName || metric },
+    yAxis: { type: 'value', name: scatterData.yName || scatterY },
+    series: [{ type: 'scatter', symbolSize: 8, data: scatterData.data || [] }],
+  };
+
+  return (
+    <section className="interactive-board">
+      <div className="section-title">
+        <span>Interactive Charts</span>
+        <strong>交互式分析视图</strong>
+        <p>切换指标、维度和时间粒度，快速验证不同业务假设。</p>
+      </div>
+      <div className="chart-controls">
+        <label>
+          指标
+          <select value={metric} onChange={(event) => {
+            const nextMetric = event.target.value;
+            setMetric(nextMetric);
+            if (scatterY === nextMetric) setScatterY((config.metrics || []).find((item) => item !== nextMetric) || '');
+          }}>
+            {(config.metrics || []).map((item) => <option value={item} key={item}>{item}</option>)}
+          </select>
+        </label>
+        <label>
+          维度
+          <select value={dimension} onChange={(event) => setDimension(event.target.value)}>
+            {(config.dimensions || []).map((item) => <option value={item} key={item}>{item}</option>)}
+          </select>
+        </label>
+        <label>
+          时间字段
+          <select value={dateColumn} onChange={(event) => setDateColumn(event.target.value)} disabled={!config.dateColumns?.length}>
+            {(config.dateColumns || []).map((item) => <option value={item} key={item}>{item}</option>)}
+          </select>
+        </label>
+        <label>
+          时间粒度
+          <select value={timeGrain} onChange={(event) => setTimeGrain(event.target.value)} disabled={!config.dateColumns?.length}>
+            {(config.timeGrains || []).map((item) => <option value={item.key} key={item.key}>{item.label}</option>)}
+          </select>
+        </label>
+        <label>
+          散点 Y 轴
+          <select value={scatterY} onChange={(event) => setScatterY(event.target.value)}>
+            {(config.metrics || []).filter((item) => item !== metric).map((item) => <option value={item} key={item}>{item}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="chart-grid workspace-charts">
+        <article className="chart-card">
+          <h3>{dimension} · {metric} 排行</h3>
+          <p>回答：哪个维度贡献最高，长尾是否明显。</p>
+          <ReactECharts option={barOption} style={{ height: 280 }} />
+        </article>
+        <article className="chart-card">
+          <h3>{dimension} · {metric} 结构</h3>
+          <p>回答：贡献是否过度集中，Top 维度占比是否健康。</p>
+          <ReactECharts option={pieOption} style={{ height: 280 }} />
+        </article>
+        <article className="chart-card">
+          <h3>{metric} 趋势</h3>
+          <p>回答：核心指标在当前时间粒度下是否出现拐点或异常。</p>
+          <ReactECharts option={lineOption} style={{ height: 280 }} />
+        </article>
+        <article className="chart-card">
+          <h3>{metric} × {scatterY || '指标'} 关系</h3>
+          <p>回答：两个指标是否协同变化，是否存在离群点。</p>
+          <ReactECharts option={scatterOption} style={{ height: 280 }} />
+        </article>
+      </div>
+    </section>
+  );
+}
+
 function WorkspaceReport({ report, loading }) {
   if (loading) return <EmptyState text="正在生成该业务空间的独立报告..." />;
   if (!report) return null;
@@ -386,7 +497,7 @@ function WorkspaceReport({ report, loading }) {
         <section className="analysis-plan">
           <div>
             <span>AI 前期判断</span>
-            <strong>{report.analysisPlan.name}</strong>
+            <strong>{report.analysisPlan.framework?.title || report.analysisPlan.name}</strong>
             <p>{report.analysisPlan.focus}</p>
             <small>{report.analysisPlan.inputSummary}</small>
           </div>
@@ -394,6 +505,62 @@ function WorkspaceReport({ report, loading }) {
             <span>置信度：{report.analysisPlan.confidence}</span>
             {report.analysisPlan.selectedModules.map((module) => <code key={module}>{module}</code>)}
           </div>
+        </section>
+      )}
+      {(report.dataProfile || report.qualityScore || report.recommendedPaths?.length > 0) && (
+        <section className="profile-board">
+          <div className="section-title">
+            <span>Data Readiness</span>
+            <strong>数据画像、质量评分与推荐路径</strong>
+            <p>{report.dataProfile?.profileSummary}</p>
+          </div>
+          <div className="profile-grid">
+            {report.qualityScore && (
+              <article className={`quality-card grade-${report.qualityScore.grade}`}>
+                <span>质量评分</span>
+                <strong>{report.qualityScore.score}<small>/100</small></strong>
+                <p>{report.qualityScore.grade} · {report.qualityScore.summary}</p>
+                <em>{report.qualityScore.cleaningSummary}</em>
+              </article>
+            )}
+            {report.dataProfile && (
+              <article className="profile-card">
+                <span>字段画像</span>
+                <div>
+                  <b>{report.dataProfile.metricCount}</b><small>指标</small>
+                  <b>{report.dataProfile.dimensionCount}</b><small>维度</small>
+                  <b>{report.dataProfile.timeCount}</b><small>时间</small>
+                </div>
+                <p>缺失率 {report.dataProfile.missingRate}% · 重复率 {report.dataProfile.duplicateRate}%</p>
+              </article>
+            )}
+            {report.analysisPlan?.framework && (
+              <article className="profile-card">
+                <span>方案库命中</span>
+                <strong>{report.analysisPlan.framework.title}</strong>
+                <p>{report.analysisPlan.framework.goal}</p>
+              </article>
+            )}
+          </div>
+          {report.qualityScore?.penalties?.length > 0 && (
+            <div className="quality-issues">
+              {report.qualityScore.penalties.map((item) => (
+                <span key={item.item}>{item.item} -{item.penalty}：{item.detail}</span>
+              ))}
+            </div>
+          )}
+          {report.recommendedPaths?.length > 0 && (
+            <div className="path-timeline">
+              {report.recommendedPaths.map((item) => (
+                <article key={`${item.order}-${item.name}`}>
+                  <code>{item.order}</code>
+                  <strong>{item.name}</strong>
+                  <span>{item.readiness}</span>
+                  <p>{item.reason}</p>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       )}
       {report.methodology?.length > 0 && (
@@ -413,6 +580,24 @@ function WorkspaceReport({ report, loading }) {
                 <p>{item.question}</p>
                 <small>需要字段：{item.requiredFields?.filter(Boolean).join(' / ')}</small>
                 <em>{item.output}</em>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+      {report.diagnosticStory?.length > 0 && (
+        <section className="diagnostic-story">
+          <div className="section-title">
+            <span>Diagnostic Flow</span>
+            <strong>问题诊断型报告</strong>
+            <p>按“现象 → 对比 → 异常 → 归因假设 → 行动建议”的顺序组织结论。</p>
+          </div>
+          <div className="story-steps">
+            {report.diagnosticStory.map((item) => (
+              <article key={item.stage}>
+                <span>{item.stage}</span>
+                <strong>{item.title}</strong>
+                <p>{item.content}</p>
               </article>
             ))}
           </div>
@@ -444,6 +629,7 @@ function WorkspaceReport({ report, loading }) {
           ))}
         </div>
       )}
+      <InteractiveCharts config={report.interactiveCharts} palette={chartPalette} />
       {(report.driverAnalysis?.length > 0 || report.benchmarkSummary?.length > 0) && (
         <section className="diagnosis-grid">
           {report.driverAnalysis?.length > 0 && (
@@ -617,18 +803,364 @@ function WorkspaceReport({ report, loading }) {
   );
 }
 
+function WorkspaceModulePanel({ report, activeModule }) {
+  if (!report) return null;
+  if (activeModule === 'overview') {
+    return (
+      <section className="module-stack compact-stack">
+        <section className="profile-board">
+          <div className="section-title">
+            <span>Overview</span>
+            <strong>{report.workspaceName}</strong>
+            <p>{report.dataProfile?.profileSummary}</p>
+          </div>
+          <div className="profile-grid">
+            <article className={`quality-card grade-${report.qualityScore?.grade}`}>
+              <span>质量评分</span>
+              <strong>{report.qualityScore?.score}<small>/100</small></strong>
+              <p>{report.qualityScore?.grade} · {report.qualityScore?.summary}</p>
+            </article>
+            <article className="profile-card">
+              <span>方案库</span>
+              <strong>{report.analysisPlan?.framework?.title || report.analysisPlan?.name}</strong>
+              <p>{report.analysisPlan?.framework?.goal}</p>
+            </article>
+            <article className="profile-card">
+              <span>字段结构</span>
+              <div>
+                <b>{report.dataProfile?.metricCount}</b><small>指标</small>
+                <b>{report.dataProfile?.dimensionCount}</b><small>维度</small>
+                <b>{report.dataProfile?.timeCount}</b><small>时间</small>
+              </div>
+              <p>缺失率 {report.dataProfile?.missingRate}% · 重复率 {report.dataProfile?.duplicateRate}%</p>
+            </article>
+          </div>
+          <div className="path-timeline">
+            {(report.recommendedPaths || []).map((item) => (
+              <article key={`${item.order}-${item.name}`}>
+                <code>{item.order}</code>
+                <strong>{item.name}</strong>
+                <span>{item.readiness}</span>
+                <p>{item.reason}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      </section>
+    );
+  }
+  if (activeModule === 'dashboard') {
+    return (
+      <section className="module-stack compact-stack">
+        <div className="metric-cards">
+          {(report.summaryCards || []).map((card) => (
+            <article className="metric-card" key={card.label}>
+              <span>{card.label}</span>
+              <strong>{card.value}<small>{card.unit}</small></strong>
+              <p>{card.note}</p>
+            </article>
+          ))}
+        </div>
+        <InteractiveCharts config={report.interactiveCharts} palette={['#6f8faf', '#88a77d', '#d8a657', '#b8898c', '#8f83b8', '#74a6a1']} />
+      </section>
+    );
+  }
+  if (activeModule === 'metrics') {
+    return (
+      <section className="module-stack compact-stack">
+        <section className="table-card">
+          <div className="table-head three">
+            <span>指标名称</span>
+            <span>口径</span>
+            <span>当前值</span>
+          </div>
+          {(report.metricCatalog || []).map((item) => (
+            <div className="table-row three" key={item.name}>
+              <strong>{item.name}</strong>
+              <code>{item.formula}</code>
+              <p>{item.value}</p>
+            </div>
+          ))}
+        </section>
+        <section className="table-card">
+          <div className="table-head three">
+            <span>SQL 模板</span>
+            <span>语句</span>
+            <span>用途</span>
+          </div>
+          {(report.sqlTemplates || []).map((item) => (
+            <div className="table-row three" key={item.name}>
+              <strong>{item.name}</strong>
+              <code>{item.sql}</code>
+              <p>该业务空间专属查询</p>
+            </div>
+          ))}
+        </section>
+      </section>
+    );
+  }
+  if (activeModule === 'anomaly') {
+    return (
+      <section className="module-stack compact-stack">
+        <section className="strategy-board">
+          <div className="section-title">
+            <span>Anomaly</span>
+            <strong>异常监控与原因假设</strong>
+            <p>按时间趋势识别波动周期，并给出下一步检查方向。</p>
+          </div>
+          <div className="strategy-columns">
+            {(report.anomalyDiagnosis || []).map((item) => (
+              <article key={`${item.period}-${item.severity}`}>
+                <span>{item.period} · {item.severity}</span>
+                <strong>{item.finding}</strong>
+                <p>{item.possibleCauses?.join(' / ')}</p>
+                <small>{item.nextCheck}</small>
+              </article>
+            ))}
+          </div>
+        </section>
+      </section>
+    );
+  }
+  if (activeModule === 'growth') {
+    return (
+      <section className="template-grid compact">
+        {(report.growthSuggestions || []).map((item) => (
+          <article className="template-card" key={item.title}>
+            <strong>{item.title}</strong>
+            <p>{item.content}</p>
+          </article>
+        ))}
+        {(report.driverAnalysis || []).map((item) => (
+          <article className="template-card" key={`${item.dimension}-${item.driver}`}>
+            <strong>{item.dimension} · {item.driver}</strong>
+            <p>{item.diagnosis}</p>
+          </article>
+        ))}
+      </section>
+    );
+  }
+  if (activeModule === 'finance') {
+    return (
+      <section className="template-grid compact">
+        {(report.monetizationSuggestions || []).map((item) => (
+          <article className="template-card" key={item.title}>
+            <strong>{item.title}</strong>
+            <p>{item.content}</p>
+          </article>
+        ))}
+        {(report.priorityActions || []).filter((item) => /ROI|成本|预算|收入|费用|利润/.test(item.title + item.rationale)).map((item) => (
+          <article className="template-card" key={`${item.priority}-${item.title}`}>
+            <strong>{item.priority} · {item.title}</strong>
+            <p>{item.nextStep}</p>
+          </article>
+        ))}
+      </section>
+    );
+  }
+  if (activeModule === 'inventory') {
+    return (
+      <section className="template-grid compact">
+        {(report.methodology || []).filter((item) => /库存|周转|缺货|滞销|SKU/.test(item.name + item.question)).map((item) => (
+          <article className="template-card" key={item.name}>
+            <strong>{item.name}</strong>
+            <p>{item.question}</p>
+            <code>{item.output}</code>
+          </article>
+        ))}
+      </section>
+    );
+  }
+  if (activeModule === 'export') {
+    return (
+      <section className="module-stack compact-stack">
+        <article className="insight-card">
+          <span>数据清洗质量</span>
+          <strong>去重 {report.cleaningQuality?.removedDuplicateRows} 行</strong>
+          <p>缺失值处理 {report.cleaningQuality?.fillActions?.length || 0} 个字段，类型转换 {report.cleaningQuality?.typeChanges?.length || 0} 个字段。</p>
+        </article>
+        <a className="text-link report-download" href={`/api/bi/workspaces/${report.jobId}/export-report`}>下载该业务报告</a>
+      </section>
+    );
+  }
+  return <WorkspaceReport report={report} loading={false} />;
+}
+
+const workspaceGroupModes = [
+  { key: 'month', label: '按上传时间', hint: '适合周期复盘和月度项目归档' },
+  { key: 'name', label: '按名称', hint: '适合按项目、渠道、活动名称检索' },
+  { key: 'status', label: '按入库状态', hint: '区分已入库与待确认数据' },
+  { key: 'manual', label: '手动分组', hint: '前端本地保存，可先快速调整' },
+];
+
+const businessSpaceOrder = ['销售经营', '用户运营', '财务经营', '库存管理', '运营分析', '通用业务'];
+const businessSpaceMeta = {
+  销售经营: { icon: '01', tone: 'sales' },
+  用户运营: { icon: '02', tone: 'user' },
+  财务经营: { icon: '03', tone: 'finance' },
+  库存管理: { icon: '04', tone: 'inventory' },
+  运营分析: { icon: '05', tone: 'operation' },
+  通用业务: { icon: '06', tone: 'general' },
+};
+
+function readManualWorkspaceGroups() {
+  if (typeof window === 'undefined') return {};
+  try {
+    return JSON.parse(window.localStorage.getItem('chatbi_manual_workspace_groups') || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveManualWorkspaceGroups(groups) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem('chatbi_manual_workspace_groups', JSON.stringify(groups));
+}
+
+function formatWorkspaceMonth(createdAt) {
+  if (!createdAt) return '未记录上传时间';
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return '未记录上传时间';
+  return `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, '0')}月上传`;
+}
+
+function formatWorkspaceTime(createdAt) {
+  if (!createdAt) return '未记录';
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return createdAt;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function inferNameGroup(workspace) {
+  const rawName = (workspace.name || workspace.sourceFile || '未命名项目').replace(/\.[^.]+$/, '');
+  const parts = rawName.split(/[_\-—\s]+/).filter(Boolean);
+  const firstUsefulPart = parts.find((part) => part !== workspace.businessType && part.length >= 2);
+  if (firstUsefulPart) return `${firstUsefulPart}项目组`;
+  return `${rawName.slice(0, 10)}项目组`;
+}
+
+function buildWorkspaceGroups(workspaces, mode, manualGroups) {
+  const bucket = new Map();
+  [...workspaces]
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .forEach((workspace) => {
+      let label = formatWorkspaceMonth(workspace.createdAt);
+      if (mode === 'name') label = inferNameGroup(workspace);
+      if (mode === 'status') label = workspace.imported ? '已入库数据' : '待入库数据';
+      if (mode === 'manual') label = manualGroups[workspace.workspaceId] || '未分组项目';
+
+      if (!bucket.has(label)) {
+        bucket.set(label, {
+          key: `${mode}:${label}`,
+          label,
+          workspaces: [],
+          importedCount: 0,
+          latestAt: null,
+        });
+      }
+      const group = bucket.get(label);
+      group.workspaces.push(workspace);
+      group.importedCount += workspace.imported ? 1 : 0;
+      if (!group.latestAt || new Date(workspace.createdAt || 0) > new Date(group.latestAt || 0)) {
+        group.latestAt = workspace.createdAt;
+      }
+    });
+
+  return Array.from(bucket.values()).map((group) => ({
+    ...group,
+    count: group.workspaces.length,
+  }));
+}
+
 function WorkspacesView({ data }) {
+  const [level, setLevel] = useState('spaces');
+  const [selectedBusinessType, setSelectedBusinessType] = useState(null);
+  const [selectedGroupKey, setSelectedGroupKey] = useState(null);
   const [selectedWorkspace, setSelectedWorkspace] = useState(null);
   const [report, setReport] = useState(null);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [activeModule, setActiveModule] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [groupMode, setGroupMode] = useState('month');
+  const [manualGroups, setManualGroups] = useState(readManualWorkspaceGroups);
+  const [manualEditorOpen, setManualEditorOpen] = useState(false);
 
   if (!data) return <EmptyState text="正在加载业务空间..." />;
   if (data.error) return <EmptyState text={data.error} />;
 
+  const workspaces = data.workspaces || [];
+  const groupedBusinessSpaces = data.groups?.length
+    ? data.groups
+    : businessSpaceOrder
+        .map((businessType) => {
+          const items = workspaces.filter((workspace) => workspace.businessType === businessType);
+          return items.length ? { businessType, count: items.length, workspaces: items } : null;
+        })
+        .filter(Boolean);
+  const businessSpaces = groupedBusinessSpaces
+    .slice()
+    .sort((a, b) => businessSpaceOrder.indexOf(a.businessType) - businessSpaceOrder.indexOf(b.businessType));
+  const selectedSpace = businessSpaces.find((item) => item.businessType === selectedBusinessType);
+  const selectedSpaceWorkspaces = selectedSpace?.workspaces || workspaces.filter((item) => item.businessType === selectedBusinessType);
+  const projectGroups = buildWorkspaceGroups(selectedSpaceWorkspaces, groupMode, manualGroups);
+  const selectedGroup = projectGroups.find((item) => item.key === selectedGroupKey);
+
+  const updateManualGroup = (workspaceId, value) => {
+    setManualGroups((current) => {
+      const next = { ...current, [workspaceId]: value || '未分组项目' };
+      saveManualWorkspaceGroups(next);
+      return next;
+    });
+  };
+
+  const resetReport = () => {
+    setSelectedWorkspace(null);
+    setReport(null);
+    setActiveModule(null);
+    setReportOpen(false);
+    setLoadingReport(false);
+  };
+
+  const goSpaces = () => {
+    setLevel('spaces');
+    setSelectedBusinessType(null);
+    setSelectedGroupKey(null);
+    setManualEditorOpen(false);
+    resetReport();
+  };
+
+  const goGroups = () => {
+    setLevel('groups');
+    setSelectedGroupKey(null);
+    resetReport();
+  };
+
+  const goFiles = () => {
+    setLevel('files');
+    resetReport();
+  };
+
+  const openBusinessSpace = (businessType) => {
+    setSelectedBusinessType(businessType);
+    setSelectedGroupKey(null);
+    setManualEditorOpen(false);
+    resetReport();
+    setLevel('groups');
+  };
+
+  const openProjectGroup = (group) => {
+    setSelectedGroupKey(group.key);
+    resetReport();
+    setLevel('files');
+  };
+
   const openReport = async (workspace) => {
     setSelectedWorkspace(workspace);
+    setLevel('report');
     setLoadingReport(true);
     setReport(null);
+    setActiveModule(null);
+    setReportOpen(false);
     try {
       const response = await fetch(`/api/bi/workspaces/${workspace.workspaceId}/report`);
       const result = await response.json();
@@ -641,30 +1173,143 @@ function WorkspacesView({ data }) {
     }
   };
 
+  const breadcrumbItems = [
+    { label: '业务空间', onClick: goSpaces, active: level === 'spaces' },
+    selectedBusinessType && { label: selectedBusinessType, onClick: goGroups, active: level === 'groups' },
+    selectedGroup && { label: selectedGroup.label, onClick: goFiles, active: level === 'files' },
+    selectedWorkspace && { label: selectedWorkspace.name, active: level === 'report' },
+  ].filter(Boolean);
+
   return (
-    <section className="module-stack">
-      <div className="workspace-grid">
-        {data.workspaces.map((workspace) => (
-          <article className="workspace-card" key={workspace.workspaceId}>
-            <span>{workspace.businessType}</span>
-            <strong>{workspace.name}</strong>
-            <p>{workspace.sourceFile}</p>
-            <div>
-              <code>{workspace.rows} 行 / {workspace.columns} 字段</code>
-              <button type="button" onClick={() => openReport(workspace)}>查看报告</button>
-            </div>
-          </article>
-        ))}
-      </div>
-      {data.workspaces.length === 0 && <EmptyState text="还没有业务空间。先在导入导出模块上传一个文件。" />}
-      {selectedWorkspace && (
-        <article className="insight-card">
-          <span>当前业务空间</span>
-          <strong>{selectedWorkspace.name}</strong>
-          <p>报告基于该上传表单独生成，不会混用默认电商样例数据。</p>
-        </article>
+    <section className="module-stack workspace-flow">
+      {level !== 'spaces' && (
+        <nav className="workspace-breadcrumb" aria-label="业务空间路径">
+          {breadcrumbItems.map((item, index) => (
+            <React.Fragment key={`${item.label}-${index}`}>
+              <button className={item.active ? 'active' : ''} type="button" onClick={item.onClick} disabled={!item.onClick}>
+                {item.label}
+              </button>
+              {index < breadcrumbItems.length - 1 && <span>/</span>}
+            </React.Fragment>
+          ))}
+        </nav>
       )}
-      <WorkspaceReport report={report} loading={loadingReport} />
+
+      {level === 'spaces' && (
+        <section className="workspace-group workspace-index-panel">
+          {businessSpaces.length === 0 && <EmptyState text="还没有业务空间。先在批量导入模块上传文件。" />}
+          <div className="workspace-grid space-entry-grid">
+            {businessSpaces.map((space) => {
+              const meta = businessSpaceMeta[space.businessType] || businessSpaceMeta.通用业务;
+              return (
+                <button className={`workspace-card space-entry-card tone-${meta.tone}`} key={space.businessType} type="button" onClick={() => openBusinessSpace(space.businessType)}>
+                  <i>{meta.icon}</i>
+                  <strong>{space.businessType}</strong>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {level === 'groups' && selectedBusinessType && (
+        <section className="workspace-group">
+          <div className="workspace-level-head">
+            <div className="section-title">
+              <span>{selectedSpaceWorkspaces.length} 个文件空间</span>
+              <strong>{selectedBusinessType}</strong>
+              <p>先按业务规则归成项目组，再进入项目组检索文件与报告。</p>
+            </div>
+            <div className="workspace-group-controls">
+              {workspaceGroupModes.map((mode) => (
+                <button className={groupMode === mode.key ? 'active' : ''} type="button" key={mode.key} onClick={() => { setGroupMode(mode.key); setSelectedGroupKey(null); }}>
+                  <strong>{mode.label}</strong>
+                  <span>{mode.hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {groupMode === 'manual' && (
+            <div className="manual-group-panel">
+              <button className="link-button" type="button" onClick={() => setManualEditorOpen((current) => !current)}>
+                {manualEditorOpen ? '收起手动调整' : '管理手动分组'}
+              </button>
+              {manualEditorOpen && (
+                <div className="manual-group-editor">
+                  {selectedSpaceWorkspaces.map((workspace) => (
+                    <label key={workspace.workspaceId}>
+                      <span>{workspace.name}</span>
+                      <input value={manualGroups[workspace.workspaceId] || ''} onChange={(event) => updateManualGroup(workspace.workspaceId, event.target.value)} placeholder="输入项目组名称" />
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="workspace-grid project-group-grid">
+            {projectGroups.map((group) => (
+              <button className="workspace-card project-group-card" key={group.key} type="button" onClick={() => openProjectGroup(group)}>
+                <span>Project Group</span>
+                <strong>{group.label}</strong>
+                <p>{group.count} 个文件 · {group.importedCount} 个已入库 · 最近 {formatWorkspaceTime(group.latestAt)}</p>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {level === 'files' && selectedGroup && (
+        <section className="workspace-group">
+          <div className="section-title">
+            <span>{selectedGroup.count} 个文件</span>
+            <strong>{selectedGroup.label}</strong>
+            <p>项目组内只展示文件和对应报告入口，点击报告后再进入独立封面。</p>
+          </div>
+          <div className="workspace-file-list">
+            {selectedGroup.workspaces.map((workspace) => (
+              <article className="workspace-file-card" key={workspace.workspaceId}>
+                <div>
+                  <span>{workspace.imported ? '已入库' : '待入库'}</span>
+                  <strong>{workspace.name}</strong>
+                  <p>{workspace.sourceFile}</p>
+                </div>
+                <code>{workspace.rows} 行 / {workspace.columns} 字段 / {workspace.moduleCount} 个可用模块</code>
+                <button type="button" onClick={() => openReport(workspace)}>查看报告</button>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {level === 'report' && selectedWorkspace && (
+        <section className="workspace-detail report-shell">
+          <article className="report-cover">
+            <span>Report</span>
+            <strong>{report?.workspaceName || selectedWorkspace.name}</strong>
+            <button type="button" onClick={() => { setReportOpen((current) => !current); if (reportOpen) setActiveModule(null); }} disabled={loadingReport || Boolean(report?.error)}>
+              {reportOpen ? '隐藏报告内容' : '展开报告内容'}
+            </button>
+          </article>
+          {loadingReport && <EmptyState text="正在生成该文件的独立报告..." />}
+          {report?.error && <EmptyState text={report.error} />}
+          {report && !report.error && reportOpen && (
+            <>
+              <div className="workspace-tabs">
+                {(report.workspaceModules || []).map((module) => (
+                  <button className={activeModule === module.key ? 'active' : ''} type="button" key={module.key} onClick={() => setActiveModule(module.key)}>
+                    <strong>{module.label}</strong>
+                    <span>{module.description}</span>
+                  </button>
+                ))}
+              </div>
+              {!activeModule && <EmptyState text="报告内容已折叠。请选择一个模块查看细节。" />}
+              {activeModule && (activeModule === 'report' ? <WorkspaceReport report={report} loading={false} /> : <WorkspaceModulePanel report={report} activeModule={activeModule} />)}
+            </>
+          )}
+        </section>
+      )}
     </section>
   );
 }
@@ -674,6 +1319,7 @@ function ImportCleanView({ data }) {
   const [jobList, setJobList] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [committing, setCommitting] = useState(false);
+  const [batchCommitting, setBatchCommitting] = useState(false);
   const [tableName, setTableName] = useState('');
   const [statusText, setStatusText] = useState('');
   const [workspaceReport, setWorkspaceReport] = useState(null);
@@ -687,29 +1333,63 @@ function ImportCleanView({ data }) {
   }, []);
 
   const handleUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file || uploading) return;
+    const files = Array.from(event.target.files || []);
+    if (!files.length || uploading) return;
     setUploading(true);
-    setStatusText('正在上传并自动清洗...');
+    setStatusText(files.length > 1 ? `正在批量上传并清洗 ${files.length} 个文件...` : '正在上传并自动清洗...');
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach((file) => formData.append(files.length > 1 ? 'files' : 'file', file));
 
     try {
-      const response = await fetch('/api/bi/import-clean/upload', {
+      const response = await fetch(files.length > 1 ? '/api/bi/import-clean/upload-batch' : '/api/bi/import-clean/upload', {
         method: 'POST',
         body: formData,
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.detail || '上传清洗失败');
-      setJob(result);
-      setTableName(result.suggestedTableName || '');
-      setJobList((current) => [result, ...current.filter((item) => item.jobId !== result.jobId)].slice(0, 20));
-      setStatusText(`清洗完成：${result.rowsBefore} 行 → ${result.rowsAfter} 行`);
+      if (files.length > 1) {
+        const jobs = (result.results || []).filter((item) => item.ok && item.job).map((item) => item.job);
+        if (jobs.length > 0) {
+          setJob(jobs[0]);
+          setTableName(jobs[0].suggestedTableName || '');
+          setJobList((current) => [...jobs, ...current.filter((item) => !jobs.some((nextJob) => nextJob.jobId === item.jobId))].slice(0, 30));
+        }
+        setStatusText(`批量清洗完成：成功 ${result.success} 个，失败 ${result.failed} 个。`);
+      } else {
+        setJob(result);
+        setTableName(result.suggestedTableName || '');
+        setJobList((current) => [result, ...current.filter((item) => item.jobId !== result.jobId)].slice(0, 20));
+        setStatusText(`清洗完成：${result.rowsBefore} 行 → ${result.rowsAfter} 行`);
+      }
     } catch (error) {
       setStatusText(error.message);
     } finally {
       setUploading(false);
       event.target.value = '';
+    }
+  };
+
+  const handleBatchCommit = async () => {
+    const pendingJobs = jobList.filter((item) => !item.imported);
+    if (!pendingJobs.length || batchCommitting) return;
+    setBatchCommitting(true);
+    setStatusText(`正在批量入库 ${pendingJobs.length} 个业务空间...`);
+    try {
+      const response = await fetch('/api/bi/import-clean/jobs/batch-commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_ids: pendingJobs.map((item) => item.jobId) }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || '批量入库失败');
+      const tableByJobId = Object.fromEntries((result.results || []).filter((item) => item.ok).map((item) => [item.jobId, item.dbTable]));
+      setJobList((current) => current.map((item) => tableByJobId[item.jobId] ? { ...item, imported: true, dbTable: tableByJobId[item.jobId] } : item));
+      if (job && tableByJobId[job.jobId]) setJob({ ...job, imported: true, dbTable: tableByJobId[job.jobId] });
+      setStatusText(`批量入库完成：成功 ${result.success} 个，失败 ${result.failed} 个。`);
+    } catch (error) {
+      setStatusText(error.message);
+    } finally {
+      setBatchCommitting(false);
     }
   };
 
@@ -766,13 +1446,13 @@ function ImportCleanView({ data }) {
       </article>
       <section className="upload-panel">
         <div>
-          <span>文件导入</span>
-          <strong>上传后自动清洗</strong>
-          <p>支持 CSV / XLSX / XLS，自动去重、修正类型、处理缺失值，并生成清洗预览。</p>
+          <span>批量文件导入</span>
+          <strong>上传后自动清洗并生成业务空间</strong>
+          <p>支持一次选择多个 CSV / XLSX / XLS，系统自动识别业务类型，并按不同业务空间存放。</p>
         </div>
         <label className="upload-button">
           {uploading ? '处理中...' : '选择文件'}
-          <input type="file" accept=".csv,.xlsx,.xls" onChange={handleUpload} disabled={uploading} />
+          <input type="file" accept=".csv,.xlsx,.xls" multiple onChange={handleUpload} disabled={uploading} />
         </label>
       </section>
       {statusText && <div className="status-line">{statusText}</div>}
@@ -799,6 +1479,7 @@ function ImportCleanView({ data }) {
           <div className="import-actions">
             <input value={tableName} onChange={(event) => setTableName(event.target.value)} placeholder="入库表名" />
             <button type="button" onClick={handleCommit} disabled={committing || job.imported}>{job.imported ? '已入库' : '确认入库'}</button>
+            <button type="button" onClick={handleBatchCommit} disabled={batchCommitting || jobList.every((item) => item.imported)}>{batchCommitting ? '批量入库中...' : '批量入库'}</button>
             <button type="button" onClick={() => handleWorkspaceReport(job)} disabled={reportLoading}>生成独立报告</button>
             <a href={job.downloadUrl}>下载清洗文件</a>
           </div>
@@ -848,14 +1529,14 @@ function ImportCleanView({ data }) {
         <section className="table-card">
           <div className="table-head three">
             <span>最近任务</span>
-            <span>清洗结果</span>
+            <span>业务空间/清洗结果</span>
             <span>状态</span>
           </div>
           {jobList.slice(0, 5).map((item) => (
             <div className="table-row three" key={item.jobId}>
               <strong>{item.originalFilename}</strong>
-              <span>{item.rowsBefore} → {item.rowsAfter} 行</span>
-              <button type="button" className="link-button" onClick={() => { setJob(item); setTableName(item.suggestedTableName || ''); handleWorkspaceReport(item); }}>看报告</button>
+              <span>{item.businessType} · {item.rowsBefore} → {item.rowsAfter} 行</span>
+              <button type="button" className="link-button" onClick={() => { setJob(item); setTableName(item.suggestedTableName || ''); handleWorkspaceReport(item); }}>{item.imported ? '已入库/看报告' : '看报告'}</button>
             </div>
           ))}
         </section>
@@ -986,6 +1667,7 @@ function EmptyState({ text }) {
 
 function App() {
   const [activeView, setActiveView] = useState('chat');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [input, setInput] = useState('查询奇多的价格是多少');
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState([
@@ -1025,7 +1707,7 @@ function App() {
     }
   };
 
-  const [icon, title, description] = pageCopy[activeView];
+  const [icon, title, description, eyebrow] = pageCopy[activeView];
 
   const renderContent = () => {
     if (activeView === 'chat') {
@@ -1054,18 +1736,23 @@ function App() {
   };
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <aside className="sidebar">
-        <div className="workspace-mark">BI</div>
-        <div className="workspace-copy">
-          <strong>ChatBI</strong>
-          <span>数据分析助手</span>
+        <div className="sidebar-brand">
+          <div className="workspace-mark">BI</div>
+          <div className="workspace-copy">
+            <strong>ChatBI</strong>
+            <span>Data Studio</span>
+          </div>
+          <button className="sidebar-toggle" type="button" onClick={() => setSidebarCollapsed((current) => !current)} aria-label={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'} title={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}>
+            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
         </div>
         <nav className="nav-list">
           {navItems.map((item) => (
-            <button className={activeView === item.key ? 'active' : ''} key={item.key} type="button" onClick={() => setActiveView(item.key)}>
+            <button className={activeView === item.key ? 'active' : ''} key={item.key} type="button" onClick={() => setActiveView(item.key)} title={item.label}>
               {item.icon}
-              {item.label}
+              <span>{item.label}</span>
             </button>
           ))}
         </nav>
@@ -1079,6 +1766,7 @@ function App() {
         <header className="page-header">
           <div>
             <div className="page-icon">{icon}</div>
+            <span className="page-eyebrow">{eyebrow}</span>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>

@@ -30,6 +30,7 @@ pnpm-debug.log*
 logs/
 *.log
 pgdata/
+demo_upload_files/
 langGraph_agent/smart_data_analysis_assistant/import_jobs/
 langGraph_agent/smart_data_analysis_assistant/exports/
 langGraph_agent/smart_data_analysis_assistant/chatbi_graph/output/
