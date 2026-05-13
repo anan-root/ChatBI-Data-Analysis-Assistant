@@ -1,0 +1,66 @@
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / React
+chatbi-react-ui/node_modules/
+chatbi-react-ui/dist/
+chatbi-react-ui/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Runtime data
+logs/
+*.log
+pgdata/
+langGraph_agent/smart_data_analysis_assistant/import_jobs/
+langGraph_agent/smart_data_analysis_assistant/exports/
+langGraph_agent/smart_data_analysis_assistant/chatbi_graph/output/
+langGraph_agent/output_plots/
+langGraph_agent/project_data/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Generated artifacts
+build_graph.png
+langGraph图.jpg
+整体架构.png
+*.xlsx
+*.xls
+*.csv
+*.png
+*.jpg
+*.jpeg
+*.doc
+*.docx
+*.pdf
+*.tmp
+*.bak
+
+# Private course/source materials
+数据挖掘+数据分析一体化BI Agent课程.pdf
+2.ChatBI数据分析助手问题.md
+MCP+LangGraph构建专属 ChatBI 数据分析智能助手.md
+时序图.doc
+langGraph_agent/langGraph_basic_learning/
