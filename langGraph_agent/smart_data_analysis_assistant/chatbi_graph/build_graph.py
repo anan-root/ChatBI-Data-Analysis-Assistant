@@ -77,6 +77,12 @@ mcp_server_config = {
     "timeout": 20000.0,  # 机器学习时间需要久一些
     "sse_read_timeout": 20000.0
 },
+"workspace_mcp":{
+    "url": f"http://{server_url}:9006/mcp",
+    "transport": "streamable_http",
+    "timeout": 20000.0,
+    "sse_read_timeout": 20000.0
+},
 }
 from typing import TypedDict, Annotated
 from langchain_core.messages import AnyMessage
@@ -187,15 +193,18 @@ async def make_graph(workspace_context=None):
     tools=[] #所有工具
     #并行同时启动4个会话session,session的作用是持久化会话,保持MCP server和client之间的不断
     async with client.session("python_chart_mcp") as python_chart_session, client.session("ywfl_mcp") as ywfl_session, \
-        client.session("machine_learning_mcp") as machine_learning_session, client.session("search_db_mcp") as search_db_session:
+        client.session("machine_learning_mcp") as machine_learning_session, client.session("search_db_mcp") as search_db_session, \
+        client.session("workspace_mcp") as workspace_session:
         python_chart_server_tools = await load_mcp_tools(python_chart_session) #加载所有MCP，并显示所有的工具 list_tools()
         ywfl_server_tools = await load_mcp_tools(ywfl_session)  #
         machine_learning_server_tools = await load_mcp_tools(machine_learning_session)  #
         search_db_server_tools = await load_mcp_tools(search_db_session)  #
+        workspace_server_tools = await load_mcp_tools(workspace_session)
         tools.extend(ywfl_server_tools)
         tools.extend(machine_learning_server_tools)
         tools.extend(python_chart_server_tools)
         tools.extend(search_db_server_tools)
+        tools.extend(workspace_server_tools)
         log_step("MCP 工具加载完成: " + ", ".join(tool.name for tool in tools))
         # 解析tool获取工具变量
         for one_tool in tools:
@@ -215,6 +224,14 @@ async def make_graph(workspace_context=None):
                 sales_predict_tool=one_tool
             elif one_tool.name=="translate_to_python_plot_script": #写python代码绘图的工具
                 translate_to_python_plot_script_tool=one_tool
+            elif one_tool.name=="list_workspaces_tool":
+                list_workspaces_tool=one_tool
+            elif one_tool.name=="get_workspace_schema_tool":
+                get_workspace_schema_tool=one_tool
+            elif one_tool.name=="get_workspace_analysis_context_tool":
+                get_workspace_analysis_context_tool=one_tool
+            elif one_tool.name=="get_workspace_report_summary_tool":
+                get_workspace_report_summary_tool=one_tool
             else:
                 log_step(f"遇到了其它tools:{one_tool.name}")
 
@@ -268,6 +285,10 @@ async def make_graph(workspace_context=None):
         data_analysis_agent = create_react_agent(model=llm,
                                                  tools=[db_sql_tool,
                                                         run_python_script_tool,
+                                                        list_workspaces_tool,
+                                                        get_workspace_schema_tool,
+                                                        get_workspace_analysis_context_tool,
+                                                        get_workspace_report_summary_tool,
                                                         reviews_stars_correlation_test_tool,
                                                         translate_to_python_plot_script_tool,
                                                         analysis_product_reviews_tool,

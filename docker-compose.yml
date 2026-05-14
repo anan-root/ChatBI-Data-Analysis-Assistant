@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: chatbi-postgres
+    env_file:
+      - .env.docker
+    ports:
+      - "5432:5432"
+    volumes:
+      - chatbi_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-sales_chat}"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: chatbi-backend
+    env_file:
+      - .env.docker
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "9008:9008"
+      - "9006:9006"
+    volumes:
+      - chatbi_import_jobs:/app/langGraph_agent/smart_data_analysis_assistant/import_jobs
+      - chatbi_exports:/app/langGraph_agent/smart_data_analysis_assistant/exports
+      - chatbi_audit_logs:/app/langGraph_agent/smart_data_analysis_assistant/audit_logs
+      - chatbi_chart_output:/app/langGraph_agent/smart_data_analysis_assistant/chatbi_graph/output
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: chatbi-frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+
+volumes:
+  chatbi_postgres_data:
+  chatbi_import_jobs:
+  chatbi_exports:
+  chatbi_audit_logs:
+  chatbi_chart_output:

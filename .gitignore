@@ -22,9 +22,11 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+!.env.docker.example
 **/.env
 **/.env.*
 !**/.env.example
+!**/.env.docker.example
 
 # Runtime data
 logs/

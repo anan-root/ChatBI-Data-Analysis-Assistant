@@ -12,6 +12,7 @@
 - **图表分析**：支持柱形图、折线图、饼图、散点图，并说明每张图回答的业务问题。
 - **企业安全治理**：内置只读 SQL 网关、workspace 表/字段白名单、CORS 白名单、Python 执行隔离和审计日志。
 - **可选审计落库**：SQL 审计事件默认写入 JSONL，也可同步到 PostgreSQL 审计表。
+- **增强 MCP 工具层**：新增业务空间 MCP，可向 Agent 暴露空间列表、字段画像、质量评分、分析方案和报告摘要。
 - **可选 RAG 模块**：预留企业知识库入口，后续可接入指标口径、数据字典和历史报告。
 
 ## 技术栈
@@ -40,6 +41,7 @@
 - 变现 / ROI 分析
 - SQL 分析模板
 - 审计日志
+- 业务空间 MCP 工具
 - 可选 RAG 知识库
 
 ## 快速启动
@@ -88,6 +90,7 @@ python ywfl_mcp.py
 python python_chart_mcp.py
 python machine_learning_mcp.py
 python statistic_db_mcp_tools.py
+python workspace_mcp.py
 ```
 
 启动 API：
@@ -109,6 +112,40 @@ npm run dev
 
 ```text
 http://127.0.0.1:5173/
+```
+
+## Docker 启动
+
+项目已提供 Docker Compose，适合快速启动完整演示环境：
+
+```bash
+cp .env.docker.example .env.docker
+docker compose up --build
+```
+
+启动后访问：
+
+```text
+http://127.0.0.1:5173/
+```
+
+Compose 会启动：
+
+- `postgres`：PostgreSQL 数据库
+- `backend`：FastAPI + 5 个 MCP 服务
+- `workspace_mcp`：业务空间、字段画像、质量评分和报告摘要工具
+- `frontend`：React 静态页面 + Nginx 反向代理
+
+停止服务：
+
+```bash
+docker compose down
+```
+
+如需同时删除 Docker 数据卷：
+
+```bash
+docker compose down -v
 ```
 
 ## 验证命令
@@ -150,4 +187,3 @@ npm --prefix chatbi-react-ui run build
 - Docker Compose 一键部署
 - 更完整的指标口径管理
 - 企业 RAG 知识库接入
-

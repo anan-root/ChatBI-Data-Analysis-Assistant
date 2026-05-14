@@ -5,9 +5,11 @@ langgraph
 typing
 langchain_core
 matplotlib
-dotenv
+python-dotenv
 pydantic
 fastapi
+uvicorn[standard]
+python-multipart
 starlette
 asyncio
 async_timeout
