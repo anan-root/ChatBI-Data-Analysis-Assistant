@@ -1,0 +1,58 @@
+[
+  {
+    "id": "gmv",
+    "title": "GMV",
+    "type": "metric",
+    "keywords": ["gmv", "成交额", "交易总额", "总成交"],
+    "summary": "GMV 表示成交总额，通常用于衡量业务交易规模，是否扣除退款需结合企业口径确认。"
+  },
+  {
+    "id": "sales_amount",
+    "title": "销售额",
+    "type": "metric",
+    "keywords": ["销售额", "销售收入", "收入", "营收", "成交金额"],
+    "summary": "销售额表示商品或服务在统计周期内产生的销售收入，可用于趋势分析、区域对比和商品排行。"
+  },
+  {
+    "id": "aov",
+    "title": "客单价",
+    "type": "metric",
+    "keywords": ["客单价", "平均订单金额", "订单均价", "aov"],
+    "summary": "客单价通常等于销售额除以订单数，用于判断用户单次购买价值和价格带变化。"
+  },
+  {
+    "id": "roi",
+    "title": "ROI",
+    "type": "metric",
+    "keywords": ["roi", "投资回报", "投产比", "回报率"],
+    "summary": "ROI 表示投入产出效果，常见口径为收益除以成本，适合评估活动、渠道和投放效率。"
+  },
+  {
+    "id": "conversion_rate",
+    "title": "转化率",
+    "type": "metric",
+    "keywords": ["转化率", "转化", "下单率", "成交率"],
+    "summary": "转化率表示目标行为完成比例，例如下单人数除以访问人数，常用于漏斗分析和渠道质量评估。"
+  },
+  {
+    "id": "retention_rate",
+    "title": "留存率",
+    "type": "metric",
+    "keywords": ["留存", "留存率", "次日留存", "复访"],
+    "summary": "留存率衡量用户在某段时间后继续活跃的比例，是用户运营和产品粘性分析的核心指标。"
+  },
+  {
+    "id": "active_users",
+    "title": "活跃用户",
+    "type": "metric",
+    "keywords": ["活跃用户", "活跃", "dau", "mau", "访问用户"],
+    "summary": "活跃用户表示在统计周期内发生指定活跃行为的用户数，常见口径包括 DAU、WAU 和 MAU。"
+  },
+  {
+    "id": "gross_margin",
+    "title": "毛利率",
+    "type": "metric",
+    "keywords": ["毛利率", "毛利", "利润率", "gross margin"],
+    "summary": "毛利率通常等于毛利除以收入，用于评估商品、渠道或业务线的盈利质量。"
+  }
+]

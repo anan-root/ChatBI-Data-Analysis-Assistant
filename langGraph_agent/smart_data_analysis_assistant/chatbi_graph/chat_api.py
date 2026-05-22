@@ -32,6 +32,7 @@ from fastapi import WebSocket, WebSocketDisconnect, Query
 from async_timeout import timeout  # 确保安装了 async-timeout 库
 from chat_context import UserInput, build_workspace_system_message
 from bi_api import (
+    build_ai_eval_data,
     build_anomaly_data,
     build_audit_log_data,
     build_dashboard_data,
@@ -62,6 +63,15 @@ from bi_api import (
 )
 from core.security import parse_cors_origins
 from core.audit import audit_admin_token
+from services.agent_trace import (
+    build_evidence,
+    build_trace,
+    infer_intent_from_route,
+    new_trace_id,
+    step_from_ai_message,
+    step_from_tool_message,
+)
+from services.knowledge_base import search_knowledge
 
 app = FastAPI()
 allowed_origins = parse_cors_origins(os.getenv("CHATBI_CORS_ORIGINS"))
@@ -329,18 +339,29 @@ async def bi_rag():
     return build_rag_data()
 
 
+@app.get("/bi/ai-eval")
+async def bi_ai_eval():
+    return build_ai_eval_data()
+
+
 @app.post("/chatbi_service")
 async def chatbi_server(user_input: UserInput):
     print("user_input:",user_input)
     user_id=user_input.user_id
     user_message=user_input.message
     history=list(user_input.history or [])
+    trace_id = new_trace_id()
+    trace_steps = []
+    intent = "unknown"
     workspace_context = None
     if user_input.workspace_id:
         try:
             workspace_context = build_workspace_chat_context(user_input.workspace_id)
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+    knowledge_references = search_knowledge(user_message, workspace_context)
+    if workspace_context:
+        workspace_context = {**workspace_context, "knowledgeReferences": knowledge_references}
     history.append({"role": "user", "content": user_message})
     print(f"用户Id:{user_id},本轮输入:{user_message},历史记录:{history}")
     graph_messages = history
@@ -363,20 +384,43 @@ async def chatbi_server(user_input: UserInput):
                 if isinstance(messages, list):
                     message = messages[-1]  # 如果消息是列表，则取最后一个
                 if message.__class__.__name__ == 'AIMessage':
+                    trace_steps.extend(step_from_ai_message(message))
                     if message.content and not message.tool_calls: #是AIMessage且不是工具调用类消息(是正常回复类的消息)
                         result = message.content  # 需要回传消息
                         print("本轮回复:",result)
-                        return {"message": result}
+                        trace = build_trace(trace_id, intent, workspace_context, trace_steps)
+                        evidence = build_evidence(workspace_context, trace_steps, knowledge_references)
+                        return {"message": result, "trace": trace, "evidence": evidence}
                 elif message.__class__.__name__ == 'ToolMessage':
                     tool_result = get_message_text(message)
+                    if tool_result in ["纯python编码", "业务数据查询分析"]:
+                        intent = infer_intent_from_route(tool_result)
+                        trace_steps.append(
+                            {
+                                "stage": "intent",
+                                "node": "identify_intention_tool_node",
+                                "toolName": getattr(message, "name", "") or "ywfl_tool",
+                                "status": "ok",
+                                "summary": f"意图识别结果：{tool_result}",
+                                "sql": "",
+                                "reason": "",
+                            }
+                        )
+                    else:
+                        trace_steps.append(step_from_tool_message(message, get_message_text))
                     if tool_result and tool_result not in ["纯python编码", "业务数据查询分析"]:
                         fallback_result = tool_result
                 else:
                     print("中间处理消息:",message)
         if fallback_result:
             print("本轮工具回复:", fallback_result)
-            return {"message": fallback_result}
-        return {"message": "本轮流程已结束，但没有生成可返回的结果。请换一种问法重试。"}
+            trace = build_trace(trace_id, intent, workspace_context, trace_steps)
+            evidence = build_evidence(workspace_context, trace_steps, knowledge_references)
+            return {"message": fallback_result, "trace": trace, "evidence": evidence}
+        fallback_message = "本轮流程已结束，但没有生成可返回的结果。请换一种问法重试。"
+        trace = build_trace(trace_id, intent, workspace_context, trace_steps)
+        evidence = build_evidence(workspace_context, trace_steps, knowledge_references)
+        return {"message": fallback_message, "trace": trace, "evidence": evidence}
 
 
 

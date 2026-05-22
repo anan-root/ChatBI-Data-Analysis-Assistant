@@ -127,12 +127,12 @@ def build_scoped_database_tools(list_tables_tool, db_sql_tool, workspace_context
         return format_workspace_table_schema(scope)
 
     @tool("db_sql_tool")
-    def scoped_db_sql_tool(query: str) -> str:
+    async def scoped_db_sql_tool(query: str) -> str:
         """仅在当前业务空间授权表范围内执行只读 SQL 查询。"""
         validation = validate_workspace_sql_scope(query, scope)
         if not validation.allowed:
             return f"错误: 工作空间 SQL 范围检查未通过。{validation.reason}"
-        return db_sql_tool.invoke({"query": validation.query})
+        return await db_sql_tool.ainvoke({"query": validation.query})
 
     return scoped_list_tables_tool, scoped_db_sql_tool, policy_text
 

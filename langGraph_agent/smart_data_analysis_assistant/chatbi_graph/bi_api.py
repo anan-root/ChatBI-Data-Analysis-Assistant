@@ -82,6 +82,16 @@ except ImportError:
     from services.workspace_context import build_workspace_chat_context_from_report
 
 try:
+    from .services.knowledge_base import build_rag_catalog
+except ImportError:
+    from services.knowledge_base import build_rag_catalog
+
+try:
+    from .services.text2sql_eval import run_text2sql_eval
+except ImportError:
+    from services.text2sql_eval import run_text2sql_eval
+
+try:
     from .services.reporting_persistence import sync_workspace_report_to_postgres
 except ImportError:
     from services.reporting_persistence import sync_workspace_report_to_postgres
@@ -869,9 +879,13 @@ def build_monetization_data():
 
 
 def build_rag_data():
+    catalog = build_rag_catalog()
     return {
-        "enabled": False,
-        "positioning": "企业知识库增强模块，可用于接入指标口径、业务 SOP、数据字典和历史分析报告；当前默认不参与问答链路。",
+        "enabled": True,
+        "positioning": "企业知识库增强模块已接入本地指标口径字典，当前采用轻量关键词检索，为 Agent 提供业务语义参考。",
+        "mode": catalog["mode"],
+        "catalogCount": catalog["count"],
+        "catalog": catalog["items"],
         "scenarios": [
             "指标口径问答：解释 GMV、留存、活跃等企业内部定义",
             "数据字典检索：查询字段含义、来源表和使用限制",
@@ -886,6 +900,10 @@ def build_rag_data():
             "接入方式：作为可选工具，不默认影响 SQL 分析",
         ],
     }
+
+
+def build_ai_eval_data():
+    return run_text2sql_eval()
 
 
 def build_anomaly_data():

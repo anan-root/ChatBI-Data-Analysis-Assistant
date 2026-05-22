@@ -13,7 +13,9 @@
 - **企业安全治理**：内置只读 SQL 网关、workspace 表/字段白名单、CORS 白名单、Python 执行隔离和审计日志。
 - **可选审计落库**：SQL 审计事件默认写入 JSONL，也可同步到 PostgreSQL 审计表。
 - **增强 MCP 工具层**：新增业务空间 MCP，可向 Agent 暴露空间列表、字段画像、质量评分、分析方案和报告摘要。
-- **可选 RAG 模块**：预留企业知识库入口，后续可接入指标口径、数据字典和历史报告。
+- **Agent 可观测性**：聊天接口返回 `trace` 和 `evidence`，前端可折叠展示意图识别、工具调用、SQL 校验和回答依据。
+- **RAG-lite 指标口径**：内置本地指标字典，支持 GMV、销售额、ROI、转化率、留存率等业务口径关键词检索。
+- **Text-to-SQL 规则评测**：提供固定评测集和 `/bi/ai-eval` 接口，验证只读 SQL、workspace 范围、字段白名单和未入库拦截。
 
 ## 技术栈
 
@@ -27,6 +29,8 @@
 | 数据库 | PostgreSQL |
 | 图表 | 轻量 SVG 图表、matplotlib |
 | 安全治理 | 只读 SQL、字段白名单、审计日志、CORS 白名单 |
+| 知识增强 | 本地指标字典、关键词检索 |
+| 测试验证 | pytest、Text-to-SQL 规则样例、Vite build |
 
 ## 功能模块
 
@@ -42,7 +46,41 @@
 - SQL 分析模板
 - 审计日志
 - 业务空间 MCP 工具
-- 可选 RAG 知识库
+- Agent 执行链路
+- 回答依据展示
+- RAG-lite 指标口径
+- AI 评测
+
+## AI 应用能力
+
+### Agent Trace 与 Evidence
+
+`POST /chatbi_service` 保持原有 `message` 字段兼容，同时新增：
+
+- `trace`：记录 traceId、意图、workspace、工具计划、工具结果、SQL 摘要和拦截原因。
+- `evidence`：返回当前 workspace、使用字段、SQL 证据和命中的指标口径。
+
+前端聊天消息会在回答下方展示可折叠的「执行链路」和「回答依据」，方便面试或演示时说明 Agent 不是黑盒回答。
+
+### RAG-lite 指标口径
+
+项目内置轻量指标字典：
+
+```text
+langGraph_agent/smart_data_analysis_assistant/chatbi_graph/knowledge/metric_dictionary.json
+```
+
+后端会基于用户问题和 workspace 字段做关键词匹配，将命中的业务口径注入 Agent 上下文，并通过 `/bi/rag` 返回当前可用知识条目。
+
+### Text-to-SQL 规则评测
+
+评测样例位于：
+
+```text
+tests/fixtures/text2sql_cases.json
+```
+
+`GET /bi/ai-eval` 会返回规则层评测结果，重点验证 SQL 安全和 workspace 边界，不宣称真实模型 SQL 生成准确率。
 
 ## 快速启动
 
@@ -162,13 +200,28 @@ python -m pytest tests -q
 npm --prefix chatbi-react-ui run build
 ```
 
+Windows PowerShell 如遇到 npm 脚本执行策略限制，可使用：
+
+```powershell
+npm.cmd --prefix chatbi-react-ui run build
+```
+
 ## 安全说明
 
 - 数据库查询默认只允许 `SELECT / WITH / EXPLAIN`。
 - workspace 模式下只能访问当前业务空间的数据表和字段。
+- workspace 模式下禁止 `SELECT *`，并校验引用字段是否在当前空间画像中。
 - 默认关闭任意 Python 代码执行。
 - 审计日志默认写入本地 JSONL，可选同步到 PostgreSQL。
+- `/bi/ai-eval` 评测只覆盖规则层安全边界，不代表真实 LLM Text-to-SQL 准确率。
 - `.env`、上传数据、日志、PostgreSQL 数据目录和构建产物已通过 `.gitignore` 排除。
+
+## 常见排查
+
+- 前端出现 502：通常是后端、MCP 服务或 PostgreSQL 未启动，先确认 Docker / 本地服务状态。
+- Docker PostgreSQL 默认密码来自 `.env.docker`，本地 `.env` 的 `password` 必须和实际数据库密码一致。
+- 业务空间显示已入库但查询报表不存在：检查清洗任务是否已执行 `commit`，必要时重新提交入库。
+- 使用 Docker 演示时建议先确认 `docker compose ps` 中 `postgres`、`backend`、`frontend` 均为运行状态。
 
 ## 项目定位
 
@@ -177,6 +230,7 @@ npm --prefix chatbi-react-ui run build
 - ChatBI / AI BI 原型项目
 - 企业数据分析助手 Demo
 - LangGraph + MCP 工具调用实践
+- Agent 可观测性、RAG-lite、Text-to-SQL 安全评测展示
 - 数据清洗、业务报告和自然语言问数的一体化样例
 
 ## 后续规划
@@ -184,6 +238,6 @@ npm --prefix chatbi-react-ui run build
 - 审计日志权限体系
 - 租户级数据隔离
 - 异步导入任务
-- Docker Compose 一键部署
 - 更完整的指标口径管理
-- 企业 RAG 知识库接入
+- 向量化企业知识库接入
+- 更完整的 Text-to-SQL 准确率评测

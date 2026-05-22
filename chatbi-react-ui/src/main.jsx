@@ -6,6 +6,7 @@ import {
   BriefcaseBusiness,
   CheckCircle2,
   ShieldCheck,
+  ClipboardCheck,
   HardDriveUpload,
   PanelLeftClose,
   PanelLeftOpen,
@@ -28,6 +29,7 @@ const AnomaliesView = lazyFeature(() => import('./features/bi/BiModuleViews'), '
 const UserGrowthView = lazyFeature(() => import('./features/bi/BiModuleViews'), 'UserGrowthView');
 const MonetizationView = lazyFeature(() => import('./features/bi/BiModuleViews'), 'MonetizationView');
 const RagView = lazyFeature(() => import('./features/bi/BiModuleViews'), 'RagView');
+const AiEvalView = lazyFeature(() => import('./features/bi/BiModuleViews'), 'AiEvalView');
 const ImportCleanView = lazyFeature(() => import('./features/import/ImportCleanView'), 'ImportCleanView');
 const ReportView = lazyFeature(() => import('./features/report/ReportViews'), 'ReportView');
 const WorkspaceReport = lazyFeature(() => import('./features/report/ReportViews'), 'WorkspaceReport');
@@ -46,6 +48,7 @@ const navItems = [
   { key: 'importClean', icon: <HardDriveUpload size={16} />, label: '批量导入' },
   { key: 'chat', icon: <MessageSquareText size={16} />, label: '数据问答' },
   { key: 'audit', icon: <ShieldCheck size={16} />, label: '审计日志' },
+  { key: 'aiEval', icon: <ClipboardCheck size={16} />, label: 'AI 评测' },
   { key: 'rag', icon: <Network size={16} />, label: 'RAG 知识库' },
   { key: 'quick', icon: <Search size={16} />, label: '快速查询' },
   { key: 'templates', icon: <BarChart3 size={16} />, label: '分析模板' },
@@ -54,6 +57,7 @@ const navItems = [
 const pageCopy = {
   chat: ['📊', '数据分析助手', '像写文档一样提问，让智能体完成查询、计算和分析。', 'Ask with data'],
   audit: ['🛡️', '审计日志', '追踪 SQL 放行、拦截、越权表引用和业务空间访问边界。', 'Audit trail'],
+  aiEval: ['✅', 'AI 评测', '用固定样例验证 Text-to-SQL 安全规则、业务空间边界和字段白名单。', 'AI evaluation'],
   workspaces: ['🏢', '业务空间', '先选择业务空间，再进入该空间的报告、看板、指标体系、异常监控和导出入库。', 'Business spaces'],
   sql: ['🧮', 'SQL 分析', '沉淀自然语言查数、聚合统计、对比分析和环比模板。', 'Query studio'],
   dashboard: ['📌', 'BI 看板', '核心指标、月度趋势和商品排行集中展示。', 'BI dashboard'],
@@ -103,7 +107,7 @@ function App() {
         history: requestHistory,
         workspaceId: workspaceOverride?.workspaceId,
       });
-      setMessages((current) => [...current, { role: 'assistant', content: result.message || '没有拿到返回内容。' }]);
+      setMessages((current) => [...current, { role: 'assistant', content: result.message || '没有拿到返回内容。', trace: result.trace, evidence: result.evidence }]);
     } catch (error) {
       setMessages((current) => [...current, { role: 'assistant', content: `请求失败：${error.message}\n请确认后端服务已启动后再试。` }]);
     } finally {
@@ -151,6 +155,7 @@ function App() {
       );
     }
     if (activeView === 'audit') return <AuditView data={biData.audit} loading={biLoading} />;
+    if (activeView === 'aiEval') return <AiEvalView data={biData.aiEval} loading={biLoading} />;
     if (activeView === 'sql') return <SqlAnalysisView data={biData.sql} onRun={sendMessage} />;
     if (activeView === 'dashboard') return <DashboardView data={biData.dashboard} loading={biLoading} />;
     if (activeView === 'metrics') return <MetricsView data={biData.metrics} loading={biLoading} />;

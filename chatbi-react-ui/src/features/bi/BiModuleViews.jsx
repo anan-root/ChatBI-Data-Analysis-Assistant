@@ -326,6 +326,22 @@ export function RagView({ data }) {
         <strong>{data.enabled ? '已启用' : '未启用'}</strong>
         <p>{data.positioning}</p>
       </article>
+      {data.catalog?.length > 0 && (
+        <section className="table-card">
+          <div className="table-head three">
+            <span>指标</span>
+            <span>关键词</span>
+            <span>口径说明</span>
+          </div>
+          {data.catalog.map((item) => (
+            <div className="table-row three" key={item.title}>
+              <strong>{item.title}</strong>
+              <code>{(item.keywords || []).join(' / ')}</code>
+              <p>{item.summary}</p>
+            </div>
+          ))}
+        </section>
+      )}
       <div className="template-grid compact">
         {data.scenarios.map((scenario) => (
           <article className="template-card" key={scenario}>
@@ -338,6 +354,58 @@ export function RagView({ data }) {
         {data.suggestedStack.map((item) => (
           <div className="table-row single" key={item}>
             <p>{item}</p>
+          </div>
+        ))}
+      </section>
+    </section>
+  );
+}
+
+export function AiEvalView({ data }) {
+  if (!data) return <EmptyState text="正在加载 AI 评测结果..." />;
+  if (data.error) return <EmptyState text={data.error} />;
+
+  const cards = [
+    { label: '评测样例', value: data.total || 0, unit: '条', note: '规则层 Text-to-SQL 样例' },
+    { label: '通过样例', value: data.passed || 0, unit: '条', note: '符合预期放行或拦截' },
+    { label: '失败样例', value: data.failed || 0, unit: '条', note: '需要继续排查的规则结果' },
+    { label: '通过率', value: Math.round((data.passRate || 0) * 100), unit: '%', note: '不代表模型真实准确率' },
+  ];
+
+  return (
+    <section className="module-stack">
+      <div className="metric-cards">
+        {cards.map((card) => (
+          <article className="metric-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}<small>{card.unit}</small></strong>
+            <p>{card.note}</p>
+          </article>
+        ))}
+      </div>
+      <article className="insight-card">
+        <span>Evaluation Scope</span>
+        <strong>Text-to-SQL Safety Rules</strong>
+        <p>{data.positioning}</p>
+      </article>
+      <section className="table-card ai-eval-table">
+        <div className="table-head ai-eval-row">
+          <span>场景</span>
+          <span>预期 / 实际</span>
+          <span>问题</span>
+          <span>SQL 与原因</span>
+        </div>
+        {(data.cases || []).map((item) => (
+          <div className="table-row ai-eval-row" key={item.id}>
+            <strong>{item.category}</strong>
+            <span className={item.passed ? 'audit-allowed' : 'audit-blocked'}>
+              {item.expectAllowed ? 'Expect Allowed' : 'Expect Blocked'} / {item.actualAllowed ? 'Allowed' : 'Blocked'}
+            </span>
+            <p>{item.question}</p>
+            <p>
+              <code>{item.sql}</code>
+              <b>{item.reason}</b>
+            </p>
           </div>
         ))}
       </section>

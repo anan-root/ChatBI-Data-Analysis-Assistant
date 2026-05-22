@@ -13,6 +13,7 @@ export function useBiData(activeView) {
     growth: null,
     monetization: null,
     rag: null,
+    aiEval: null,
     workspaces: null,
   });
   const [loading, setLoading] = useState(false);

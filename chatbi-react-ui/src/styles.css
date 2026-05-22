@@ -547,6 +547,11 @@ h1 {
   grid-template-columns: 1.05fr .62fr .95fr .95fr minmax(0, 2.2fr);
 }
 
+.table-head.ai-eval-row,
+.table-row.ai-eval-row {
+  grid-template-columns: .85fr 1fr 1.15fr minmax(0, 2.2fr);
+}
+
 .table-row.single {
   grid-template-columns: 1fr;
 }
@@ -2250,6 +2255,122 @@ h1 {
 
 .bubble strong {
   font-weight: 760;
+}
+
+.agent-panel {
+  width: min(760px, 100%);
+  margin-top: 10px;
+  border: 1px solid rgba(205, 191, 174, .72);
+  border-radius: 12px;
+  background: rgba(255, 254, 251, .74);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.agent-panel summary {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  color: #6d685f;
+  cursor: pointer;
+  list-style: none;
+}
+
+.agent-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.agent-panel-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+.trace-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #8b8579;
+}
+
+.trace-meta span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1ece4;
+}
+
+.trace-steps {
+  display: grid;
+  gap: 8px;
+}
+
+.trace-step,
+.evidence-sql,
+.knowledge-hits article {
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: #fbfaf7;
+  border: 1px solid rgba(234, 223, 214, .8);
+}
+
+.trace-step.blocked,
+.evidence-sql.blocked {
+  border-color: rgba(172, 73, 64, .34);
+  background: rgba(255, 246, 244, .72);
+}
+
+.trace-step > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.trace-step strong {
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+.trace-step span,
+.trace-step em,
+.evidence-sql span {
+  color: #8b8579;
+  font-style: normal;
+}
+
+.trace-step p,
+.knowledge-hits p,
+.evidence-line {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.trace-step code,
+.evidence-sql code {
+  display: block;
+  margin-top: 7px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.trace-step small,
+.evidence-sql small {
+  display: block;
+  margin-top: 5px;
+  color: #9b4a42;
+}
+
+.knowledge-hits {
+  display: grid;
+  gap: 8px;
+}
+
+.knowledge-hits strong {
+  font-family: var(--font-sans);
+  font-size: 13px;
 }
 
 .loading {

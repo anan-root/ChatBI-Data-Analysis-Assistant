@@ -23,6 +23,7 @@ export function getBiEndpoint(activeView) {
     growth: '/api/bi/user-growth',
     monetization: '/api/bi/monetization',
     rag: '/api/bi/rag',
+    aiEval: '/api/bi/ai-eval',
     workspaces: '/api/bi/workspaces',
   };
   return endpointMap[activeView];

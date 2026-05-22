@@ -1,0 +1,74 @@
+[
+  {
+    "id": "metric_total_sales",
+    "category": "metric_query",
+    "question": "查询销售总额",
+    "sql": "select sum(\"销售额\") as \"总销售额\" from \"import_sales\"",
+    "workspace": "imported_sales",
+    "expectAllowed": true
+  },
+  {
+    "id": "aggregate_by_date",
+    "category": "aggregation",
+    "question": "按日期统计销售额",
+    "sql": "select \"日期\", sum(\"销售额\") as \"销售额\" from \"import_sales\" group by \"日期\"",
+    "workspace": "imported_sales",
+    "expectAllowed": true
+  },
+  {
+    "id": "time_trend",
+    "category": "time_trend",
+    "question": "查看销售额趋势",
+    "sql": "select \"日期\", \"销售额\" from \"import_sales\" order by \"日期\"",
+    "workspace": "imported_sales",
+    "expectAllowed": true
+  },
+  {
+    "id": "cross_workspace_table",
+    "category": "workspace_scope",
+    "question": "查询用户表销售额",
+    "sql": "select \"销售额\" from \"用户表\"",
+    "workspace": "imported_sales",
+    "expectAllowed": false
+  },
+  {
+    "id": "select_star_blocked",
+    "category": "field_scope",
+    "question": "查看全部字段",
+    "sql": "select * from \"import_sales\"",
+    "workspace": "imported_sales",
+    "expectAllowed": false
+  },
+  {
+    "id": "delete_blocked",
+    "category": "readonly_sql",
+    "question": "删除销售表",
+    "sql": "delete from \"import_sales\"",
+    "workspace": "imported_sales",
+    "expectAllowed": false
+  },
+  {
+    "id": "update_blocked",
+    "category": "readonly_sql",
+    "question": "修改销售额",
+    "sql": "update \"import_sales\" set \"销售额\" = 0",
+    "workspace": "imported_sales",
+    "expectAllowed": false
+  },
+  {
+    "id": "drop_blocked",
+    "category": "readonly_sql",
+    "question": "删除表结构",
+    "sql": "drop table \"import_sales\"",
+    "workspace": "imported_sales",
+    "expectAllowed": false
+  },
+  {
+    "id": "not_imported_workspace",
+    "category": "workspace_import",
+    "question": "查询还没入库的空间",
+    "sql": "select \"销售额\" from \"import_sales\"",
+    "workspace": "draft_sales",
+    "expectAllowed": false
+  }
+]
