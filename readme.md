@@ -1,7 +1,19 @@
-# ChatBI 数据分析助手
+# ChatBI Data Analysis AI Agent
 
-一个基于 **LangGraph + MCP + FastAPI + React** 的企业级 ChatBI 原型项目。  
-系统支持上传业务数据、自动清洗、生成业务空间、输出诊断型分析报告，并通过对话方式完成数据查询、图表分析和经营洞察。
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?style=flat-square&logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-Vite-61DAFB?style=flat-square&logo=react&logoColor=111827)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-Agent-1F2937?style=flat-square)
+![MCP](https://img.shields.io/badge/MCP-Tooling-7C3AED?style=flat-square)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
+![Status](https://img.shields.io/badge/status-MVP-0EA5E9?style=flat-square)
+
+ChatBI Data Analysis AI Agent 是一个面向企业内部数据分析场景的智能体系统原型。它围绕“上传业务数据、自动清洗、生成独立业务空间、构建诊断型分析报告、通过自然语言问数和追问洞察”这一条主流程，帮助业务人员和数据分析人员降低取数、看数、解释数据和沉淀报告的重复成本。
+
+本项目当前定位为企业内部 MVP：适合用于流程验证、业务样例测试、数据分析助手能力演示和后续产品化开发；不建议在未补齐权限、审计、数据脱敏和生产运维体系前，直接作为正式生产级 BI 系统。
+
+> 安全提醒：真实业务数据、API Key、数据库文件、审计日志、上传文件、生成报告和运行产物不应提交到 Git。公开仓库前请再次检查 `.env`、`.env.docker`、`pgdata/`、`import_jobs/`、`exports/`、`audit_logs/`、`logs/` 和历史提交。
 
 ## 项目亮点
 
@@ -205,6 +217,11 @@ Windows PowerShell 如遇到 npm 脚本执行策略限制，可使用：
 ```powershell
 npm.cmd --prefix chatbi-react-ui run build
 ```
+
+## 项目文档
+
+- `docs/design_trace.md`：从零开发视角的设计与开发 Trace，详细说明每一步做法、原因、产物，以及 MCP、Agent、RAG 后续设计思路。
+- `README_FULL.md`：本地详细架构文档，不上传 GitHub，用于记录完整产品、接口、部署、安全和后续规划。
 
 ## 安全说明
 
